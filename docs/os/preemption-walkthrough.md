@@ -21,7 +21,7 @@ Cycle numbers below come from the default build at the time of writing.
 ## One preemption, step by step
 
 1. **User mode, process 1.** The CPU executes `INCP P2 / STW [counter], P2 /
-   CMPP P2, #LIMIT / JNE .loop` in user mode. `PSW = 0x40`: interrupts enabled.
+CMPP P2, #LIMIT / JNE .loop` in user mode. `PSW = 0x40`: interrupts enabled.
 2. **The timer expires.** After 2000 cycles the timer sets `EXPIRED`; since
    `IE = 1`, IRQ line 0 is asserted. The interrupt controller's `MASK` has bit 0
    set, so `PENDING & MASK ≠ 0`.
@@ -59,7 +59,7 @@ and each process then runs for about 1 770 cycles before the next preemption.
   with a timer marker at every switch; selecting a marker shows the interrupted
   PC and the process's saved registers.
 - **Kernel & Interrupts lab:** the exception trace shows vector 8 entries from
-  user mode, each followed by an `RTI` to the *other* window.
+  user mode, each followed by an `RTI` to the _other_ window.
 - **Memory lab:** both `counter` variables grow in turn; neither process ever
   executes a system call until it finishes.
 - **Datapath lab:** micro-step through an exception entry to see the three
@@ -71,6 +71,6 @@ and each process then runs for about 1 770 cycles before the next preemption.
   more switches and a larger share of kernel time.
 - Remove the timer restart in `schedule` and set `QUANTUM` below the handler's
   cost: the timer fires again before the process executes a single instruction —
-  *interrupt livelock*, which this kernel was written to avoid.
+  _interrupt livelock_, which this kernel was written to avoid.
 - Run `regcheck` alongside `spinner`: it fills every register with a pattern
   and verifies it across preemptions, proving the context switch is complete.

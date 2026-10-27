@@ -196,6 +196,7 @@ export function evaluate(e: Expr, ctx: EvalContext, unresolved?: string[]): numb
     case 'unary': {
       const v = evaluate(e.arg, ctx, unresolved);
       if (v === undefined) return undefined;
+      if (e.op === '~') checkBitwise(v);
       return e.op === '-' ? -v : e.op === '~' ? ~v : v;
     }
     case 'func': {
@@ -221,11 +222,11 @@ export function evaluate(e: Expr, ctx: EvalContext, unresolved?: string[]): numb
           if (r === 0) throw new ExprError('division by zero');
           return l % r;
         case '&':
-          return l & r;
         case '|':
-          return l | r;
         case '^':
-          return l ^ r;
+          checkBitwise(l);
+          checkBitwise(r);
+          return e.op === '&' ? l & r : e.op === '|' ? l | r : l ^ r;
         case '<<':
         case '>>':
           if (r < 0 || r > 31) throw new ExprError(`shift count ${r} is out of range (0…31)`);
@@ -236,6 +237,11 @@ export function evaluate(e: Expr, ctx: EvalContext, unresolved?: string[]): numb
       }
     }
   }
+}
+
+/** Bitwise operators work on 32-bit values; refuse operands that would silently wrap. */
+function checkBitwise(v: number): void {
+  if (v < -0x80000000 || v > 0xffffffff) throw new ExprError(`value ${v} is too large for a bitwise operation`);
 }
 
 /** Collect symbol names referenced by an expression. */

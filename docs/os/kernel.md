@@ -6,24 +6,24 @@ the boot ROM and provides protected processes, system calls, interrupt-driven
 devices and timer-driven preemptive round-robin scheduling. All of it executes
 on the virtual CPU; see the [boundary table](../spec/architecture.md#9-hardwaresoftware-boundary).
 
-| File | Contents |
-| --- | --- |
-| `main.asm` | memory layout, PCB and frame layout constants, `kernel_entry`, vector table |
-| `trap.asm` | vector stubs, `trap_entry` (context save), `resume_current` (context restore), timer/keyboard/fault handling, panic |
-| `sched.asm` | `pcb_addr`, `schedule`, `idle`, process creation |
-| `syscall.asm` | system-call dispatcher and the ten services |
-| `drivers.asm` | terminal, LEDs, timer, keyboard (ring buffer), storage drivers |
-| `lib.asm`, `messages.asm` | console formatting, strings |
+| File                      | Contents                                                                                                            |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `main.asm`                | memory layout, PCB and frame layout constants, `kernel_entry`, vector table                                         |
+| `trap.asm`                | vector stubs, `trap_entry` (context save), `resume_current` (context restore), timer/keyboard/fault handling, panic |
+| `sched.asm`               | `pcb_addr`, `schedule`, `idle`, process creation                                                                    |
+| `syscall.asm`             | system-call dispatcher and the ten services                                                                         |
+| `drivers.asm`             | terminal, LEDs, timer, keyboard (ring buffer), storage drivers                                                      |
+| `lib.asm`, `messages.asm` | console formatting, strings                                                                                         |
 
 ## Memory layout
 
-| Range | Use |
-| --- | --- |
-| `0x2000–0x4FFF` | kernel image (code + constant data), loaded from disk |
-| `0x5000–0x51FF` | kernel variables: `current`, `ticks`, `kframe`, keyboard ring buffer, process table (`proc_table`), `disk_buf` |
-| `0x5400–0x57FF` | four per-process kernel stacks, 256 bytes each |
-| `0x5A00` / `0x5C00` | idle stack / boot stack tops |
-| `0x6000–0xDFFF` | four user slots of 8 KiB: slot *n* is `0x6000 + n × 0x2000` |
+| Range               | Use                                                                                                            |
+| ------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `0x2000–0x4FFF`     | kernel image (code + constant data), loaded from disk                                                          |
+| `0x5000–0x51FF`     | kernel variables: `current`, `ticks`, `kframe`, keyboard ring buffer, process table (`proc_table`), `disk_buf` |
+| `0x5400–0x57FF`     | four per-process kernel stacks, 256 bytes each                                                                 |
+| `0x5A00` / `0x5C00` | idle stack / boot stack tops                                                                                   |
+| `0x6000–0xDFFF`     | four user slots of 8 KiB: slot _n_ is `0x6000 + n × 0x2000`                                                    |
 
 ## Privilege model
 
@@ -39,45 +39,45 @@ on the virtual CPU; see the [boundary table](../spec/architecture.md#9-hardwares
 
 ## Exceptions and interrupts
 
-| Vector | Kernel handler | Action |
-| --- | --- | --- |
-| 1 illegal, 2 privilege, 3 memory, 5 BRK | `process_fault` | prints the cause, PC and (memory faults) address; marks the process EXITED with code 255; schedules |
-| 4 `SYS` | `syscall_dispatch` | see the ABI below |
-| 8 IRQ0 timer | `timer_interrupt` | `timer_service` (acknowledge, `ticks++`, wake sleepers), charge the tick, RUNNING → READY, `schedule` |
-| 9 IRQ1 keyboard | `keyboard_interrupt` | `kbd_service` (drain the device FIFO into the kernel ring buffer, wake readers), resume the interrupted process |
+| Vector                                  | Kernel handler       | Action                                                                                                          |
+| --------------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 1 illegal, 2 privilege, 3 memory, 5 BRK | `process_fault`      | prints the cause, PC and (memory faults) address; marks the process EXITED with code 255; schedules             |
+| 4 `SYS`                                 | `syscall_dispatch`   | see the ABI below                                                                                               |
+| 8 IRQ0 timer                            | `timer_interrupt`    | `timer_service` (acknowledge, `ticks++`, wake sleepers), charge the tick, RUNNING → READY, `schedule`           |
+| 9 IRQ1 keyboard                         | `keyboard_interrupt` | `kbd_service` (drain the device FIFO into the kernel ring buffer, wake readers), resume the interrupted process |
 
 **What the hardware saves vs. what the kernel saves.** On any exception the CPU
 pushes `PC` and `PSW` on the supervisor stack (switching to `KSP` from user
 mode). The kernel's vector stub pushes `R0`, `trap_entry` pushes `R1–R7` and the
 banked `USP` (read with `MFC USP`). The resulting 13-byte **trap frame**:
 
-| Offset | Saved by | Contents |
-| --- | --- | --- |
-| 0–1 | kernel | `USP` |
-| 2–9 | kernel | `R7, R6, R5, R4, R3, R2, R1, R0` |
-| 10 | CPU | `PSW` |
-| 11–12 | CPU | `PC` |
+| Offset | Saved by | Contents                         |
+| ------ | -------- | -------------------------------- |
+| 0–1    | kernel   | `USP`                            |
+| 2–9    | kernel   | `R7, R6, R5, R4, R3, R2, R1, R0` |
+| 10     | CPU      | `PSW`                            |
+| 11–12  | CPU      | `PC`                             |
 
 `trap_entry` stores `SP` (the frame address) into the current PCB's `PCB_KSP`.
 
 ## Process control block (32 bytes, `proc_table`)
 
-| Offset | Field |
-| --- | --- |
-| 0 | pid (1–4) |
-| 1 | state: 0 free, 1 ready, 2 running, 3 blocked, 4 exited |
-| 2 | wait reason: 0 none, 1 keyboard, 2 sleep |
-| 3 | exit code (255 if killed) |
-| 4–5 | saved kernel SP = address of its trap frame |
-| 6–7 / 8–9 | `UBASE` / `ULIMIT` window |
-| 10–11 | entry point |
-| 12 | sleep ticks remaining |
-| 14–15 | timer ticks charged |
-| 16–17 | times dispatched |
-| 18–19 | system calls made |
-| 20–27 | name |
-| 28 | fault cause that killed it |
-| 29 | slot |
+| Offset    | Field                                                  |
+| --------- | ------------------------------------------------------ |
+| 0         | pid (1–4)                                              |
+| 1         | state: 0 free, 1 ready, 2 running, 3 blocked, 4 exited |
+| 2         | wait reason: 0 none, 1 keyboard, 2 sleep               |
+| 3         | exit code (255 if killed)                              |
+| 4–5       | saved kernel SP = address of its trap frame            |
+| 6–7 / 8–9 | `UBASE` / `ULIMIT` window                              |
+| 10–11     | entry point                                            |
+| 12        | sleep ticks remaining                                  |
+| 14–15     | timer ticks charged                                    |
+| 16–17     | times dispatched                                       |
+| 18–19     | system calls made                                      |
+| 20–27     | name                                                   |
+| 28        | fault cause that killed it                             |
+| 29        | slot                                                   |
 
 ## Context switching and scheduling
 
@@ -107,14 +107,14 @@ halts.
 
 **State transitions.**
 
-| From → to | Cause |
-| --- | --- |
-| free → ready | `proc_create` at boot |
-| ready → running | `schedule` |
-| running → ready | timer interrupt (preemption) or `yield` |
+| From → to         | Cause                                                                 |
+| ----------------- | --------------------------------------------------------------------- |
+| free → ready      | `proc_create` at boot                                                 |
+| ready → running   | `schedule`                                                            |
+| running → ready   | timer interrupt (preemption) or `yield`                               |
 | running → blocked | `getc` with an empty buffer (wait = keyboard), `sleep` (wait = sleep) |
-| blocked → ready | keyboard interrupt delivers a key / enough timer ticks |
-| running → exited | `exit`, or a fault (killed) |
+| blocked → ready   | keyboard interrupt delivers a key / enough timer ticks                |
+| running → exited  | `exit`, or a fault (killed)                                           |
 
 A blocked `getc` steps the saved `PC` back by one byte so that `SYS` executes
 again when the process is resumed; the retry then finds the key.
@@ -125,31 +125,31 @@ again when the process is resumed; the retry then finds the key.
 `SYS`. On return `R0` = result, `R1` = error code; `R2–R7` and `SP` are
 preserved, flags are not. Definitions for programs: `src/guest/include/syscalls.inc`.
 
-| # | Name | Arguments | Result |
-| --- | --- | --- | --- |
-| 0 | `exit` | `R1` = code | does not return |
-| 1 | `putc` | `R1` = character | `R0 = 1` |
-| 2 | `puts` | `P1` = NUL-terminated string (≤ 255 chars) | `R0` = characters written; `E_FAULT` if the string leaves the caller's window |
-| 3 | `getc` | — | `R0` = key; blocks until one arrives |
-| 4 | `kbhit` | — | `R0` = 1 if a key is buffered |
-| 5 | `yield` | — | gives up the rest of the time slice |
-| 6 | `getpid` | — | `R0` = pid |
-| 7 | `setled` | `R1` = pattern | LEDs updated by the kernel's GPIO driver |
-| 8 | `readblk` | `R1` = block, `P1` = 256-byte buffer | buffer filled by the kernel's storage driver; `E_FAULT` / `E_IO` |
-| 9 | `sleep` | `R1` = ticks | blocks for that many timer ticks (0 = yield) |
+| #   | Name      | Arguments                                  | Result                                                                        |
+| --- | --------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
+| 0   | `exit`    | `R1` = code                                | does not return                                                               |
+| 1   | `putc`    | `R1` = character                           | `R0 = 1`                                                                      |
+| 2   | `puts`    | `P1` = NUL-terminated string (≤ 255 chars) | `R0` = characters written; `E_FAULT` if the string leaves the caller's window |
+| 3   | `getc`    | —                                          | `R0` = key; blocks until one arrives                                          |
+| 4   | `kbhit`   | —                                          | `R0` = 1 if a key is buffered                                                 |
+| 5   | `yield`   | —                                          | gives up the rest of the time slice                                           |
+| 6   | `getpid`  | —                                          | `R0` = pid                                                                    |
+| 7   | `setled`  | `R1` = pattern                             | LEDs updated by the kernel's GPIO driver                                      |
+| 8   | `readblk` | `R1` = block, `P1` = 256-byte buffer       | buffer filled by the kernel's storage driver; `E_FAULT` / `E_IO`              |
+| 9   | `sleep`   | `R1` = ticks                               | blocks for that many timer ticks (0 = yield)                                  |
 
 Error codes: `E_OK = 0`, `E_NOSYS = 1` (unknown number; `R0 = 0xFF`),
 `E_FAULT = 2`, `E_IO = 3`, `E_INVAL = 4`.
 
 ## Drivers
 
-| Device | Driver | Mode |
-| --- | --- | --- |
-| Terminal | `kputc` | polls `TERM_STATUS.READY`, writes `TERM_DATA` |
-| Keyboard | `kbd_service`, `kbd_put`, `kbd_get` | interrupt-driven (IRQ 1) into a 16-byte ring buffer |
-| Timer | `timer_service` | interrupt-driven (IRQ 0), acknowledged by writing `TIMER_STATUS` |
-| Storage | `disk_read` | command + status polling + 256-byte programmed-I/O copy |
-| LEDs | `led_set` | writes `GPIO_LEDS` |
+| Device   | Driver                              | Mode                                                             |
+| -------- | ----------------------------------- | ---------------------------------------------------------------- |
+| Terminal | `kputc`                             | polls `TERM_STATUS.READY`, writes `TERM_DATA`                    |
+| Keyboard | `kbd_service`, `kbd_put`, `kbd_get` | interrupt-driven (IRQ 1) into a 16-byte ring buffer              |
+| Timer    | `timer_service`                     | interrupt-driven (IRQ 0), acknowledged by writing `TIMER_STATUS` |
+| Storage  | `disk_read`                         | command + status polling + 256-byte programmed-I/O copy          |
+| LEDs     | `led_set`                           | writes `GPIO_LEDS`                                               |
 
 ## Deliberate simplifications
 

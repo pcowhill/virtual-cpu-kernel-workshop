@@ -305,6 +305,7 @@ describe('diagnostics', () => {
     ['shift count too large', 'MOV R0, #(1 << 32)', /shift count 32 is out of range/],
     ['shift overflow is range-checked', '.word 1 << 20', /word value 1048576 .* out of range/],
     ['register-like label', 'R8: NOP', /reserved register name/],
+    ['bitwise operand too large', '.word 0x100000000 | 0', /too large for a bitwise operation/],
   ];
   it.each(cases)('%s', (_n, src, re) => {
     const errs = errorsOf(

@@ -1,7 +1,7 @@
 # Boot process and walkthrough: from reset to the first user program
 
 Everything below happens through VC-8 instructions executed by the virtual CPU.
-The host (the workbench) only provides the *contents* of the boot ROM chip and
+The host (the workbench) only provides the _contents_ of the boot ROM chip and
 of the storage medium before power-on — exactly what a real machine has when you
 switch it on. It never copies the kernel into RAM and never starts a process.
 
@@ -12,21 +12,21 @@ sources, which is why the workbench always shows symbols.
 
 ## 1. What exists at power-on
 
-| Component | Contents |
-| --- | --- |
+| Component                | Contents                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------- |
 | Boot ROM `0x0000–0x1FFF` | the assembled firmware (976 bytes): a vector table at `0x0000` and code from `0x0040` |
-| RAM `0x2000–0xEFFF` | all zero |
-| Storage | a disk image built by the workstation: boot block, kernel, programs, data |
-| CPU | reset state: supervisor mode, interrupts off, `VBASE = 0x0000` |
+| RAM `0x2000–0xEFFF`      | all zero                                                                              |
+| Storage                  | a disk image built by the workstation: boot block, kernel, programs, data             |
+| CPU                      | reset state: supervisor mode, interrupts off, `VBASE = 0x0000`                        |
 
 The boot disk layout (all built by `src/core/build/system.ts`):
 
-| Block(s) | Contents |
-| --- | --- |
-| 0 | boot block: magic `"VK"`, version, kernel location/size/entry/checksum, program table |
-| 1–12 | kernel image (load address `0x2000`) |
-| 13… | user program images, one after another |
-| 128… | data area (block 128 holds a text file read by the `reader` program) |
+| Block(s) | Contents                                                                              |
+| -------- | ------------------------------------------------------------------------------------- |
+| 0        | boot block: magic `"VK"`, version, kernel location/size/entry/checksum, program table |
+| 1–12     | kernel image (load address `0x2000`)                                                  |
+| 13…      | user program images, one after another                                                |
+| 128…     | data area (block 128 holds a text file read by the `reader` program)                  |
 
 Boot block fields are defined in `src/guest/include/vc8.inc` (`HDR_*`, `PE_*`).
 
@@ -66,6 +66,7 @@ Datapath lab to watch each bus transaction.
 
    3 072 times in total, printing a dot per block. Watch kernel RAM fill in the
    Memory lab, or set a write watchpoint on `0x2000`.
+
 8. Compares the checksum with the boot block's, prints `checksum OK`.
 9. `LDW P0, [fw_kentry]` then `JMP P0` — control reaches `kernel_entry`
    (`0x2000`) at about cycle 132 177, still in supervisor mode with interrupts
