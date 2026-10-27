@@ -1,0 +1,48 @@
+{
+  "name": "virtual-cpu-kernel-workshop",
+  "private": true,
+  "version": "1.0.0",
+  "description": "An educational virtual 8-bit computer: custom CPU, assembler, firmware, kernel and multitasking, all running in the browser.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit -p tsconfig.app.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.app.json && vue-tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p tsconfig.node.json",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "test:component": "vitest run --project component",
+    "test:e2e": "playwright test",
+    "docs:isa": "UPDATE_DOCS=1 vitest run tests/unit/isa-doc.test.ts",
+    "validate": "npm run lint && npm run format:check && npm run typecheck && npm run test && npm run build"
+  },
+  "dependencies": {
+    "vue": "^3.5.44"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.5",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "@vue/test-utils": "^2.5.1",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^10.12.0",
+    "globals": "^17.13.0",
+    "happy-dom": "^21.0.4",
+    "prettier": "^3.9.10",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.72.1",
+    "vite": "^7.3.7",
+    "vitest": "^5.0.5",
+    "vue-eslint-parser": "^10.4.1",
+    "vue-tsc": "^3.3.13"
+  }
+}
