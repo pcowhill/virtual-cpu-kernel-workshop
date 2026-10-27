@@ -85,8 +85,17 @@ const height = computed(() => 30 + rows.value.length * ROW + 20);
         <title>{{ g.name }}: cycles {{ g.start }}–{{ g.end }} ({{ g.end - g.start }} cycles)</title>
       </rect>
       <g v-for="(m, i) in markers" :key="`m${i}`" class="marker" :class="{ sel: selected === m }" @click="pick(m)">
-        <line :x1="x(m.cycle)" :x2="x(m.cycle)" y1="14" :y2="30 + rows.length * ROW" :stroke="MARK[m.kind]?.color" class="mline" />
-        <text :x="x(m.cycle)" y="12" text-anchor="middle" :fill="MARK[m.kind]?.color" class="msym">{{ MARK[m.kind]?.symbol }}</text>
+        <line
+          :x1="x(m.cycle)"
+          :x2="x(m.cycle)"
+          y1="14"
+          :y2="30 + rows.length * ROW"
+          :stroke="MARK[m.kind]?.color"
+          class="mline"
+        />
+        <text :x="x(m.cycle)" y="12" text-anchor="middle" :fill="MARK[m.kind]?.color" class="msym">
+          {{ MARK[m.kind]?.symbol }}
+        </text>
         <title>cycle {{ m.cycle }}: {{ m.detail }}</title>
       </g>
       <text x="0" :y="height - 4" class="axis">cycle {{ start }}</text>

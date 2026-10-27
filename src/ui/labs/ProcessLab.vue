@@ -13,7 +13,9 @@ const os = computed(() => v.value?.os ?? null);
 const windowSize = ref(60_000);
 const selected = ref<TimelineMarker | null>(null);
 
-const procAt = computed(() => (selected.value ? os.value?.processes.find((p) => p.index === selected.value!.index) : undefined));
+const procAt = computed(() =>
+  selected.value ? os.value?.processes.find((p) => p.index === selected.value!.index) : undefined,
+);
 
 const programFiles = computed(() =>
   Object.keys(s.project.files)
@@ -63,13 +65,27 @@ const traceNear = computed(() => {
       <div class="body progs">
         <div v-for="(p, i) in s.project.os.programs" :key="i" class="prog">
           <span class="mono faint">slot {{ i }} · pid {{ i + 1 }}</span>
-          <select :value="p.path" :aria-label="`Program for slot ${i}`" @change="setPath(i, ($event.target as HTMLSelectElement).value)">
+          <select
+            :value="p.path"
+            :aria-label="`Program for slot ${i}`"
+            @change="setPath(i, ($event.target as HTMLSelectElement).value)"
+          >
             <option v-for="f in programFiles" :key="f" :value="f">{{ f.slice(9) }}</option>
           </select>
-          <button class="btn small" :aria-label="`Remove program in slot ${i}`" @click="s.project.os.programs.splice(i, 1)">✕</button>
+          <button
+            class="btn small"
+            :aria-label="`Remove program in slot ${i}`"
+            @click="s.project.os.programs.splice(i, 1)"
+          >
+            ✕
+          </button>
         </div>
-        <button class="btn small" :disabled="s.project.os.programs.length >= MAX_PROGRAMS" @click="addProgram">+ add program</button>
-        <span class="faint small">Up to {{ MAX_PROGRAMS }} programs, each in its own 8 KiB slot. Rebuilding power-cycles the machine.</span>
+        <button class="btn small" :disabled="s.project.os.programs.length >= MAX_PROGRAMS" @click="addProgram">
+          + add program
+        </button>
+        <span class="faint small"
+          >Up to {{ MAX_PROGRAMS }} programs, each in its own 8 KiB slot. Rebuilding power-cycles the machine.</span
+        >
       </div>
     </section>
     <template v-if="os">
@@ -79,8 +95,16 @@ const traceNear = computed(() => {
           <table class="data mono" data-testid="process-table">
             <thead>
               <tr>
-                <th>pid</th><th>name</th><th>state</th><th>window</th><th>saved PC</th><th>saved SP (user)</th>
-                <th>ticks</th><th>dispatches</th><th>syscalls</th><th>exit</th>
+                <th>pid</th>
+                <th>name</th>
+                <th>state</th>
+                <th>window</th>
+                <th>saved PC</th>
+                <th>saved SP (user)</th>
+                <th>ticks</th>
+                <th>dispatches</th>
+                <th>syscalls</th>
+                <th>exit</th>
               </tr>
             </thead>
             <tbody>
@@ -88,7 +112,15 @@ const traceNear = computed(() => {
                 <td>{{ p.pid }}</td>
                 <td>{{ p.name }}</td>
                 <td>
-                  <span class="chip" :class="{ ok: p.state === 'running', accent: p.state === 'ready', warn: p.state === 'blocked', err: p.state === 'exited' && p.faultCause }">
+                  <span
+                    class="chip"
+                    :class="{
+                      ok: p.state === 'running',
+                      accent: p.state === 'ready',
+                      warn: p.state === 'blocked',
+                      err: p.state === 'exited' && p.faultCause,
+                    }"
+                  >
                     {{ p.state }}{{ p.state === 'blocked' ? ` (${p.wait})` : '' }}
                   </span>
                 </td>
@@ -98,17 +130,22 @@ const traceNear = computed(() => {
                 <td>{{ p.ticks }}</td>
                 <td>{{ p.runs }}</td>
                 <td>{{ p.syscalls }}</td>
-                <td>{{ p.state === 'exited' ? (p.faultCause ? `killed: ${causeLabel(p.faultCause)}` : p.exitCode) : '' }}</td>
+                <td>
+                  {{ p.state === 'exited' ? (p.faultCause ? `killed: ${causeLabel(p.faultCause)}` : p.exitCode) : '' }}
+                </td>
               </tr>
             </tbody>
           </table>
           <div class="frames">
             <div v-for="p in os.processes.filter((x) => x.frame)" :key="p.index" class="frame mono">
-              <b>pid {{ p.pid }} saved context</b> (trap frame at {{ hex4(p.frame!.frameAddress) }}):
-              R0–R7 {{ p.frame!.regs.map(hex2).join(' ') }} · PSW {{ hex2(p.frame!.psw) }} {{ flagsString(p.frame!.psw) }}
+              <b>pid {{ p.pid }} saved context</b> (trap frame at {{ hex4(p.frame!.frameAddress) }}): R0–R7
+              {{ p.frame!.regs.map(hex2).join(' ') }} · PSW {{ hex2(p.frame!.psw) }} {{ flagsString(p.frame!.psw) }}
             </div>
           </div>
-          <div class="muted small">timer ticks since boot: {{ os.ticks }} · running: {{ os.current === null ? 'none (idle or kernel)' : `pid ${os.current + 1}` }}</div>
+          <div class="muted small">
+            timer ticks since boot: {{ os.ticks }} · running:
+            {{ os.current === null ? 'none (idle or kernel)' : `pid ${os.current + 1}` }}
+          </div>
         </div>
       </section>
       <section class="panel">
@@ -128,10 +165,16 @@ const traceNear = computed(() => {
         <header>Selected event</header>
         <div class="body mono small">
           <div>cycle {{ selected.cycle }} · {{ selected.kind }} · {{ selected.detail }}</div>
-          <div v-if="selected.pc">PC {{ hex4(selected.pc) }}{{ procAt ? ` in pid ${procAt.pid} (${procAt.name})` : '' }}</div>
-          <div v-if="procAt?.frame">pid {{ procAt.pid }} now: saved PC {{ hex4(procAt.frame.pc) }}, R0–R7 {{ procAt.frame.regs.map(hex2).join(' ') }}</div>
+          <div v-if="selected.pc">
+            PC {{ hex4(selected.pc) }}{{ procAt ? ` in pid ${procAt.pid} (${procAt.name})` : '' }}
+          </div>
+          <div v-if="procAt?.frame">
+            pid {{ procAt.pid }} now: saved PC {{ hex4(procAt.frame.pc) }}, R0–R7
+            {{ procAt.frame.regs.map(hex2).join(' ') }}
+          </div>
           <div v-for="t in traceNear" :key="t.seq" class="faint">
-            trace @{{ t.cycle }} {{ t.kind }} PC {{ hex4(t.pc) }} {{ t.regs.map((r) => `${r.name}=${r.new.toString(16)}`).join(' ') }}
+            trace @{{ t.cycle }} {{ t.kind }} PC {{ hex4(t.pc) }}
+            {{ t.regs.map((r) => `${r.name}=${r.new.toString(16)}`).join(' ') }}
           </div>
         </div>
       </section>

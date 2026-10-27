@@ -3,9 +3,21 @@
  * a machine configuration. Building happens on the UI thread (the assembler is
  * fast); only the resulting ROM/disk/preload images go to the machine host.
  */
-import { assemble, type AssemblyResult, type Diagnostic, type SourceMapEntry, type SymbolInfo } from '../core/asm/assembler';
+import {
+  assemble,
+  type AssemblyResult,
+  type Diagnostic,
+  type SourceMapEntry,
+  type SymbolInfo,
+} from '../core/asm/assembler';
 import { bareMetalConfig } from '../core/build/bareMetal';
-import { buildSystem, DEFAULT_DATA_FILE, DEFAULT_PROGRAMS, type ProgramSpec, type SystemBuild } from '../core/build/system';
+import {
+  buildSystem,
+  DEFAULT_DATA_FILE,
+  DEFAULT_PROGRAMS,
+  type ProgramSpec,
+  type SystemBuild,
+} from '../core/build/system';
 import { DISK_BLOCK_COUNT, DISK_BLOCK_SIZE } from '../core/isa/constants';
 
 /** Storage medium for bare-metal experiments: only the data area is populated. */
@@ -77,7 +89,13 @@ export function buildProject(p: Project): BuildOutput {
     const file = p.bareMain;
     const result = assemble(p.files[file] ?? '', { fileName: file, files: p.files });
     if (p.files[file] === undefined) {
-      result.diagnostics.push({ severity: 'error', message: `file '${file}' does not exist`, file, line: 0, column: 0 });
+      result.diagnostics.push({
+        severity: 'error',
+        message: `file '${file}' does not exist`,
+        file,
+        line: 0,
+        column: 0,
+      });
       result.ok = false;
     }
     let load: LoadRequest | null = null;
@@ -161,7 +179,10 @@ export function labelResolver(build: BuildOutput | null): (addr: number) => stri
   return (a) => m.get(a);
 }
 
-export function sourceFor(build: BuildOutput | null, addr: number): (SourceMapEntry & { component: string }) | undefined {
+export function sourceFor(
+  build: BuildOutput | null,
+  addr: number,
+): (SourceMapEntry & { component: string }) | undefined {
   if (!build) return undefined;
   for (const e of build.sourceMap) if (addr >= e.address && addr < e.address + e.size) return e;
   return undefined;

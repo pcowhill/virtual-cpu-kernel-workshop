@@ -32,8 +32,30 @@ const rows = computed<(DisassembledInstruction & { label?: string; source?: stri
   if (prior.length) addr = prior[Math.max(0, prior.length - props.before)]!;
   const out: (DisassembledInstruction & { label?: string; source?: string })[] = [];
   for (let i = 0; i < props.count; i++) {
-    const ins = disassembleAt(read, addr, labels);
     const src = sourceFor(build, addr);
+    if (src && src.kind === 'data') {
+      // Known data (from the source map): show bytes, not a bogus decoding.
+      const n = Math.min(8, src.address + src.size - addr);
+      const bytes = Array.from({ length: n }, (_, k) => read(addr + k));
+      const text = bytes.every((b) => b >= 0x20 && b < 0x7f)
+        ? `.ascii "${String.fromCharCode(...bytes)}"`
+        : `.byte ${bytes.map((b) => `0x${hex2(b)}`).join(', ')}`;
+      out.push({
+        address: addr,
+        bytes,
+        length: n,
+        text,
+        mnemonic: '.byte',
+        operands: [],
+        def: null,
+        valid: false,
+        label: labels(addr),
+        source: `${src.file}:${src.line}`,
+      });
+      addr = (addr + n) & 0xffff;
+      continue;
+    }
+    const ins = disassembleAt(read, addr, labels);
     out.push({ ...ins, label: labels(addr), source: src ? `${src.file}:${src.line}` : undefined });
     addr = (addr + ins.length) & 0xffff;
   }
@@ -90,7 +112,12 @@ function openSource(src?: string): void {
         <span class="addr">{{ hex4(r.address) }}</span>
         <span class="bytes">{{ r.bytes.map(hex2).join(' ') }}</span>
         <span class="text">{{ r.text }}</span>
-        <button v-if="r.source" class="src faint" :title="`Open ${r.source} in the editor`" @click.stop="openSource(r.source)">
+        <button
+          v-if="r.source"
+          class="src faint"
+          :title="`Open ${r.source} in the editor`"
+          @click.stop="openSource(r.source)"
+        >
           {{ r.source }}
         </button>
       </div>

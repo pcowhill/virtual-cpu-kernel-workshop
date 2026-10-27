@@ -108,7 +108,8 @@ export function renderMarkdown(src: string): string {
       continue;
     }
     const para: string[] = [];
-    while (i < lines.length && lines[i]!.trim() && !/^(#|```|\s*\||>|\s*([-*]|\d+\.)\s)/.test(lines[i]!)) para.push(lines[i++]!);
+    while (i < lines.length && lines[i]!.trim() && !/^(#|```|\s*\||>|\s*([-*]|\d+\.)\s)/.test(lines[i]!))
+      para.push(lines[i++]!);
     if (!para.length) {
       out.push(`<p>${inline(lines[i++]!)}</p>`);
       continue;

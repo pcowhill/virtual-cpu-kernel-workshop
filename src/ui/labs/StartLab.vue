@@ -37,7 +37,9 @@ function bootOs(): void {
           Reference lab documents every rule it follows.
         </p>
         <div class="cta">
-          <button class="btn primary" data-testid="quick-start" @click="quickStart">▶ Quick start: step through a first program</button>
+          <button class="btn primary" data-testid="quick-start" @click="quickStart">
+            ▶ Quick start: step through a first program
+          </button>
           <button class="btn primary" data-testid="boot-full-os" @click="bootOs">⏻ Boot the operating system</button>
           <button class="btn" @click="s.lab.value = 'lessons'">✎ Guided lessons</button>
           <button class="btn" @click="s.lab.value = 'examples'">❖ Example catalog</button>
@@ -56,15 +58,16 @@ function bootOs(): void {
       <section class="panel">
         <header>2 · Your own code</header>
         <div class="body">
-          The <b>Assembly editor</b> holds every source file — examples, the boot ROM, the kernel and user programs. Edit,
-          then <b>Build &amp; load</b> (<span class="kbd">Ctrl+↵</span>). Click the gutter to set breakpoints.
+          The <b>Assembly editor</b> holds every source file — examples, the boot ROM, the kernel and user programs.
+          Edit, then <b>Build &amp; load</b> (<span class="kbd">Ctrl+↵</span>). Click the gutter to set breakpoints.
         </div>
       </section>
       <section class="panel">
         <header>3 · The operating system</header>
         <div class="body">
-          Boot the OS and follow it in <b>Boot &amp; firmware</b>, <b>Kernel &amp; interrupts</b> and <b>Processes &amp;
-          scheduling</b>. Type into the terminal: the echo program wakes up on the keyboard interrupt.
+          Boot the OS and follow it in <b>Boot &amp; firmware</b>, <b>Kernel &amp; interrupts</b> and
+          <b>Processes &amp; scheduling</b>. Type into the terminal: the echo program wakes up on the keyboard
+          interrupt.
         </div>
       </section>
     </div>
@@ -84,7 +87,10 @@ function bootOs(): void {
             Execution is deterministic: time is counted in simulated clock cycles. The clock setting only changes how
             fast cycles pass for you, never the result.
           </li>
-          <li>Press <span class="kbd">F5</span> or Pause to stop a runaway program at any time; the interface stays responsive.</li>
+          <li>
+            Press <span class="kbd">F5</span> or Pause to stop a runaway program at any time; the interface stays
+            responsive.
+          </li>
         </ul>
       </div>
     </section>

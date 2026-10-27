@@ -43,7 +43,10 @@ const TABS = [
   <div class="lab">
     <div class="lab-title">
       <h1>Reference</h1>
-      <p>VC-8 is a custom educational ISA. Everything here is generated from, or shipped with, the implementation and works offline.</p>
+      <p>
+        VC-8 is a custom educational ISA. Everything here is generated from, or shipped with, the implementation and
+        works offline.
+      </p>
     </div>
     <div class="tabs" role="tablist">
       <button
@@ -64,13 +67,35 @@ const TABS = [
         <header>
           {{ rows.length }} instructions
           <span class="spacer" />
-          <input v-model="q" type="text" placeholder="search mnemonic, group, opcode" aria-label="Search instructions" data-testid="isa-search" />
+          <input
+            v-model="q"
+            type="text"
+            placeholder="search mnemonic, group, opcode"
+            aria-label="Search instructions"
+            data-testid="isa-search"
+          />
         </header>
         <div class="body scroll isatable">
           <table class="data mono">
-            <thead><tr><th>op</th><th>syntax</th><th>bytes</th><th>cycles</th><th>flags</th><th>priv</th><th>summary</th></tr></thead>
+            <thead>
+              <tr>
+                <th>op</th>
+                <th>syntax</th>
+                <th>bytes</th>
+                <th>cycles</th>
+                <th>flags</th>
+                <th>priv</th>
+                <th>summary</th>
+              </tr>
+            </thead>
             <tbody>
-              <tr v-for="d in rows" :key="d.opcode" class="clickable" :class="{ selected: selected === d }" @click="selected = d">
+              <tr
+                v-for="d in rows"
+                :key="d.opcode"
+                class="clickable"
+                :class="{ selected: selected === d }"
+                @click="selected = d"
+              >
                 <td>{{ d.opcode.toString(16).toUpperCase().padStart(2, '0') }}</td>
                 <td>{{ syntaxSummary(d) }}</td>
                 <td>{{ d.length }}</td>
@@ -86,17 +111,44 @@ const TABS = [
       <section v-if="selected" class="panel" data-testid="isa-detail">
         <header>{{ syntaxSummary(selected) }}</header>
         <div class="body prose">
-          <p><b>{{ selected.summary }}</b>{{ selected.aliases.length ? ` (aliases: ${selected.aliases.join(', ')})` : '' }}</p>
+          <p>
+            <b>{{ selected.summary }}</b
+            >{{ selected.aliases.length ? ` (aliases: ${selected.aliases.join(', ')})` : '' }}
+          </p>
           <p class="mono">{{ selected.rtl }}</p>
           <table class="data mono">
             <tbody>
-              <tr><td>opcode</td><td>0x{{ selected.opcode.toString(16).toUpperCase().padStart(2, '0') }} = {{ selected.opcode.toString(2).padStart(8, '0') }}</td></tr>
-              <tr><td>encoding</td><td>{{ encodingLayout(selected) }}</td></tr>
-              <tr><td>length</td><td>{{ selected.length }} byte(s)</td></tr>
-              <tr><td>addressing</td><td>{{ addressingMode(selected) }}</td></tr>
-              <tr><td>flags written</td><td>{{ selected.flags }}</td></tr>
-              <tr><td>privilege</td><td>{{ selected.privileged ? 'supervisor only (privilege fault in user mode)' : 'any mode' }}</td></tr>
-              <tr><td>group</td><td>{{ selected.group }}</td></tr>
+              <tr>
+                <td>opcode</td>
+                <td>
+                  0x{{ selected.opcode.toString(16).toUpperCase().padStart(2, '0') }} =
+                  {{ selected.opcode.toString(2).padStart(8, '0') }}
+                </td>
+              </tr>
+              <tr>
+                <td>encoding</td>
+                <td>{{ encodingLayout(selected) }}</td>
+              </tr>
+              <tr>
+                <td>length</td>
+                <td>{{ selected.length }} byte(s)</td>
+              </tr>
+              <tr>
+                <td>addressing</td>
+                <td>{{ addressingMode(selected) }}</td>
+              </tr>
+              <tr>
+                <td>flags written</td>
+                <td>{{ selected.flags }}</td>
+              </tr>
+              <tr>
+                <td>privilege</td>
+                <td>{{ selected.privileged ? 'supervisor only (privilege fault in user mode)' : 'any mode' }}</td>
+              </tr>
+              <tr>
+                <td>group</td>
+                <td>{{ selected.group }}</td>
+              </tr>
             </tbody>
           </table>
           <p v-if="selected.notes">{{ selected.notes }}</p>
@@ -109,7 +161,9 @@ const TABS = [
     </div>
     <section v-else-if="tab === 'abi'" class="panel">
       <header>System-call ABI (include/syscalls.inc)</header>
-      <div class="body"><pre class="mono abi">{{ syscallsInc }}</pre></div>
+      <div class="body">
+        <pre class="mono abi">{{ syscallsInc }}</pre>
+      </div>
     </section>
     <section v-else class="panel">
       <div class="body prose doc" v-html="html"></div>

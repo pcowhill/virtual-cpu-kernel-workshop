@@ -43,7 +43,8 @@ const listing = computed(() => {
   const out: { component: string; address: number | null; bytes: number[]; line: number; source: string }[] = [];
   for (const c of b.components) {
     for (const l of c.result.listing) {
-      if (l.file === s.selectedFile.value) out.push({ component: c.component, address: l.address, bytes: l.bytes, line: l.line, source: l.source });
+      if (l.file === s.selectedFile.value)
+        out.push({ component: c.component, address: l.address, bytes: l.bytes, line: l.line, source: l.source });
     }
   }
   return out;
@@ -51,7 +52,8 @@ const listing = computed(() => {
 
 const diagnostics = computed(() => {
   const m = new Map<number, { severity: 'error' | 'warning'; message: string }>();
-  for (const d of build.value?.diagnostics ?? []) if (d.file === s.selectedFile.value && !m.has(d.line)) m.set(d.line, d);
+  for (const d of build.value?.diagnostics ?? [])
+    if (d.file === s.selectedFile.value && !m.has(d.line)) m.set(d.line, d);
   return m;
 });
 
@@ -62,7 +64,8 @@ const lineToAddress = computed(() => {
 });
 const codeLines = computed(() => {
   const set = new Set<number>();
-  for (const e of build.value?.sourceMap ?? []) if (e.file === s.selectedFile.value && e.kind === 'instruction') set.add(e.line);
+  for (const e of build.value?.sourceMap ?? [])
+    if (e.file === s.selectedFile.value && e.kind === 'instruction') set.add(e.line);
   return set;
 });
 const bpLines = computed(() => {
@@ -115,7 +118,8 @@ function newFile(): void {
     s.notify('error', `${name} already exists.`);
     return;
   }
-  p.files[name] = `; ${name}\n        .include "vc8.inc"\n\n        .org 0x0000\n        .word start\n\n        .org 0x0100\nstart:  NOP\n        HLT\n`;
+  p.files[name] =
+    `; ${name}\n        .include "vc8.inc"\n\n        .org 0x0000\n        .word start\n\n        .org 0x0100\nstart:  NOP\n        HLT\n`;
   s.selectedFile.value = name;
   newName.value = '';
 }
@@ -133,7 +137,12 @@ const byteRows = computed(() => {
     if (l.address === null || !l.bytes.length) continue;
     const dis = disassembleBytes(l.bytes, l.address);
     const isCode = codeLines.value.has(l.line);
-    rows.push({ address: l.address, line: l.line, bytes: l.bytes, text: isCode ? dis.map((d) => d.text).join('; ') : '(data)' });
+    rows.push({
+      address: l.address,
+      line: l.line,
+      bytes: l.bytes,
+      text: isCode ? dis.map((d) => d.text).join('; ') : '(data)',
+    });
   }
   return rows;
 });
@@ -143,7 +152,10 @@ const byteRows = computed(() => {
   <div class="lab">
     <div class="lab-title">
       <h1>Assembly editor</h1>
-      <p>Edit firmware, kernel, programs and examples. Building is explicit: the running machine is never changed silently.</p>
+      <p>
+        Edit firmware, kernel, programs and examples. Building is explicit: the running machine is never changed
+        silently.
+      </p>
     </div>
     <div class="layout">
       <aside class="panel files">
@@ -174,7 +186,12 @@ const byteRows = computed(() => {
           <header>
             <span class="mono" style="text-transform: none">{{ s.selectedFile.value }}</span>
             <span class="spacer" />
-            <button class="btn small" title="Assemble only (does not touch the machine)" data-testid="assemble" @click="s.runBuild()">
+            <button
+              class="btn small"
+              title="Assemble only (does not touch the machine)"
+              data-testid="assemble"
+              @click="s.runBuild()"
+            >
               Assemble
             </button>
             <button
@@ -197,7 +214,13 @@ const byteRows = computed(() => {
             <label v-if="p.mode === 'bare'">
               Program
               <select v-model="p.bareMain" aria-label="Bare-metal program">
-                <option v-for="f in Object.keys(p.files).filter((x) => x.endsWith('.asm') && !x.startsWith('kernel/') && !x.startsWith('programs/'))" :key="f" :value="f">
+                <option
+                  v-for="f in Object.keys(p.files).filter(
+                    (x) => x.endsWith('.asm') && !x.startsWith('kernel/') && !x.startsWith('programs/'),
+                  )"
+                  :key="f"
+                  :value="f"
+                >
                   {{ f }}
                 </option>
               </select>
@@ -205,7 +228,11 @@ const byteRows = computed(() => {
             <span v-if="p.mode === 'os'" class="muted">
               Programs: {{ p.os.programs.map((x) => x.name).join(', ') }} — configure them in the Processes lab.
             </span>
-            <button v-if="p.mode === 'os' || p.bareMain !== s.selectedFile.value" class="btn small" @click="useAsProgram">
+            <button
+              v-if="p.mode === 'os' || p.bareMain !== s.selectedFile.value"
+              class="btn small"
+              @click="useAsProgram"
+            >
               Run this file bare-metal
             </button>
           </div>
@@ -239,7 +266,8 @@ const byteRows = computed(() => {
               data-testid="diagnostic"
               @click="goToDiagnostic(d.file, d.line)"
             >
-              <b>{{ d.severity }}</b> {{ d.file }}:{{ d.line }}{{ d.column ? `:${d.column}` : '' }} [{{ d.component }}] — {{ d.message }}
+              <b>{{ d.severity }}</b> {{ d.file }}:{{ d.line }}{{ d.column ? `:${d.column}` : '' }} [{{ d.component }}]
+              — {{ d.message }}
             </button>
           </div>
         </section>
@@ -247,7 +275,15 @@ const byteRows = computed(() => {
       <aside class="panel inspector">
         <header>
           <div class="tabs" role="tablist">
-            <button v-for="t in ['listing', 'bytes', 'symbols'] as const" :key="t" class="btn small" :class="{ primary: tab === t }" role="tab" :aria-selected="tab === t" @click="tab = t">
+            <button
+              v-for="t in ['listing', 'bytes', 'symbols'] as const"
+              :key="t"
+              class="btn small"
+              :class="{ primary: tab === t }"
+              role="tab"
+              :aria-selected="tab === t"
+              @click="tab = t"
+            >
               {{ t }}
             </button>
           </div>
@@ -263,28 +299,70 @@ const byteRows = computed(() => {
         </div>
         <div class="body scroll pane">
           <table v-if="tab === 'listing'" class="data mono">
-            <thead><tr><th>line</th><th>addr</th><th>bytes</th></tr></thead>
+            <thead>
+              <tr>
+                <th>line</th>
+                <th>addr</th>
+                <th>bytes</th>
+              </tr>
+            </thead>
             <tbody>
-              <tr v-for="l in listing.filter((x) => x.bytes.length)" :key="l.component + l.line" class="clickable" :class="{ selected: l.line === s.editorLine.value }" @click="selectLine(l.line)">
+              <tr
+                v-for="l in listing.filter((x) => x.bytes.length)"
+                :key="l.component + l.line"
+                class="clickable"
+                :class="{ selected: l.line === s.editorLine.value }"
+                @click="selectLine(l.line)"
+              >
                 <td>{{ l.line }}</td>
                 <td>{{ l.address !== null ? hex4(l.address) : '' }}</td>
-                <td class="wrap">{{ l.bytes.slice(0, 8).map(hex2).join(' ') }}{{ l.bytes.length > 8 ? ` … (${l.bytes.length})` : '' }}</td>
+                <td class="wrap">
+                  {{ l.bytes.slice(0, 8).map(hex2).join(' ') }}{{ l.bytes.length > 8 ? ` … (${l.bytes.length})` : '' }}
+                </td>
               </tr>
             </tbody>
           </table>
           <table v-else-if="tab === 'bytes'" class="data mono">
-            <thead><tr><th>addr</th><th>bytes → source</th></tr></thead>
+            <thead>
+              <tr>
+                <th>addr</th>
+                <th>bytes → source</th>
+              </tr>
+            </thead>
             <tbody>
-              <tr v-for="r in byteRows" :key="r.address" class="clickable" :class="{ selected: r.line === s.editorLine.value }" :title="`Go to line ${r.line}`" @click="selectLine(r.line)">
+              <tr
+                v-for="r in byteRows"
+                :key="r.address"
+                class="clickable"
+                :class="{ selected: r.line === s.editorLine.value }"
+                :title="`Go to line ${r.line}`"
+                @click="selectLine(r.line)"
+              >
                 <td>{{ hex4(r.address) }}</td>
-                <td class="wrap">{{ r.bytes.slice(0, 6).map(hex2).join(' ') }} <span class="faint">→ {{ r.text }} (line {{ r.line }})</span></td>
+                <td class="wrap">
+                  {{ r.bytes.slice(0, 6).map(hex2).join(' ') }}
+                  <span class="faint">→ {{ r.text }} (line {{ r.line }})</span>
+                </td>
               </tr>
             </tbody>
           </table>
           <table v-else class="data mono">
-            <thead><tr><th>symbol</th><th>value</th><th>kind</th></tr></thead>
+            <thead>
+              <tr>
+                <th>symbol</th>
+                <th>value</th>
+                <th>kind</th>
+              </tr>
+            </thead>
             <tbody>
-              <tr v-for="sym in (build?.symbols ?? []).filter((x) => x.file === s.selectedFile.value || x.kind === 'predefined')" :key="sym.component + sym.name" class="clickable" @click="goToDiagnostic(sym.file, sym.line)">
+              <tr
+                v-for="sym in (build?.symbols ?? []).filter(
+                  (x) => x.file === s.selectedFile.value || x.kind === 'predefined',
+                )"
+                :key="sym.component + sym.name"
+                class="clickable"
+                @click="goToDiagnostic(sym.file, sym.line)"
+              >
                 <td>{{ sym.name }}</td>
                 <td>{{ hex4(sym.value) }}</td>
                 <td class="faint">{{ sym.kind }}</td>

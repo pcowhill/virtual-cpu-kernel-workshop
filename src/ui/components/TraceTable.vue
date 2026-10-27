@@ -62,7 +62,9 @@ const rows = computed(() => {
           <span v-if="e.fault" class="err"> ✖ {{ causeLabel(e.fault.cause) }} @ {{ hex4(e.fault.addr) }}</span>
         </td>
         <td class="changes">
-          <span v-for="r in e.regs" :key="r.name">{{ r.name }}={{ r.name.length > 2 || r.new > 255 ? hex4(r.new) : hex2(r.new) }} </span>
+          <span v-for="r in e.regs" :key="r.name"
+            >{{ r.name }}={{ r.name.length > 2 || r.new > 255 ? hex4(r.new) : hex2(r.new) }}
+          </span>
           <span v-for="m in e.mem" :key="m.addr" class="memw">[{{ hex4(m.addr) }}]={{ hex2(m.new) }} </span>
         </td>
       </tr>

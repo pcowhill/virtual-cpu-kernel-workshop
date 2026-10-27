@@ -60,7 +60,8 @@ const blocks = computed(() => {
   if (k) for (let i = 0; i < k.count; i++) use[k.block + i] = { kind: 'kernel', label: `kernel ${i + 1}/${k.count}` };
   for (const p of b.programs) {
     if (!p.image) continue;
-    for (let i = 0; i < p.image.count; i++) use[p.image.block + i] = { kind: 'program', label: `${p.spec.name} ${i + 1}/${p.image.count}` };
+    for (let i = 0; i < p.image.count; i++)
+      use[p.image.block + i] = { kind: 'program', label: `${p.spec.name} ${i + 1}/${p.image.count}` };
   }
   for (const f of b.dataFiles) use[f.block] = { kind: 'data', label: f.description };
   return use;
@@ -116,8 +117,15 @@ function bootOs(): void {
     </div>
     <template v-else>
       <div class="actions">
-        <button class="btn" :disabled="v?.runState === 'running'" @click="s.runTo(s.symbol('fw_reset') ?? 0x40)">Run to fw_reset</button>
-        <button class="btn" :disabled="v?.runState === 'running'" data-testid="run-to-kernel" @click="s.runTo(s.symbol('kernel_entry') ?? 0x2000)">
+        <button class="btn" :disabled="v?.runState === 'running'" @click="s.runTo(s.symbol('fw_reset') ?? 0x40)">
+          Run to fw_reset
+        </button>
+        <button
+          class="btn"
+          :disabled="v?.runState === 'running'"
+          data-testid="run-to-kernel"
+          @click="s.runTo(s.symbol('kernel_entry') ?? 0x2000)"
+        >
           Run to kernel entry
         </button>
         <button class="btn" @click="s.debug.watchpoints.push([sys?.kernelImage?.load ?? 0x2000, 'w'])">
@@ -131,19 +139,27 @@ function bootOs(): void {
           <div class="body">
             <ol class="stages">
               <li v-for="st in stages" :key="st.id" :class="{ done: st.done }" :data-testid="`stage-${st.id}`">
-                <span class="tick">{{ st.done ? '✔' : '○' }}</span>{{ st.label }}
+                <span class="tick">{{ st.done ? '✔' : '○' }}</span
+                >{{ st.label }}
               </li>
             </ol>
             <div v-if="kernelProgress" class="progress">
-              <div class="bar"><div class="fill" :style="{ width: `${(100 * kernelProgress.same) / kernelProgress.n}%` }" /></div>
-              <span class="mono small">{{ kernelProgress.same }} / {{ kernelProgress.n }} kernel bytes in RAM match the disk</span>
+              <div class="bar">
+                <div class="fill" :style="{ width: `${(100 * kernelProgress.same) / kernelProgress.n}%` }" />
+              </div>
+              <span class="mono small"
+                >{{ kernelProgress.same }} / {{ kernelProgress.n }} kernel bytes in RAM match the disk</span
+              >
             </div>
           </div>
         </section>
         <section class="panel">
           <header>Firmware code (ROM)</header>
           <div class="body">
-            <DisassemblyView :address="(v?.cpu.pc ?? 0) <= 0x1fff ? null : s.symbol('fw_reset') ?? 0x40" :count="14" />
+            <DisassemblyView
+              :address="(v?.cpu.pc ?? 0) <= 0x1fff ? null : (s.symbol('fw_reset') ?? 0x40)"
+              :count="14"
+            />
           </div>
         </section>
       </div>
@@ -152,7 +168,9 @@ function bootOs(): void {
           <header>
             Storage medium — 256 blocks
             <span class="spacer" />
-            <span class="mono" style="text-transform: none">BLOCK = {{ v?.devices.storage.block ?? 0 }}, reads = {{ v?.devices.storage.reads ?? 0 }}</span>
+            <span class="mono" style="text-transform: none"
+              >BLOCK = {{ v?.devices.storage.block ?? 0 }}, reads = {{ v?.devices.storage.reads ?? 0 }}</span
+            >
           </header>
           <div class="body">
             <div class="disk" role="img" aria-label="Disk block map">
@@ -165,8 +183,8 @@ function bootOs(): void {
               />
             </div>
             <div class="legend faint">
-              <span class="blk boot" /> boot block <span class="blk kernel" /> kernel <span class="blk program" /> programs
-              <span class="blk data" /> data files · outlined = BLOCK register
+              <span class="blk boot" /> boot block <span class="blk kernel" /> kernel
+              <span class="blk program" /> programs <span class="blk data" /> data files · outlined = BLOCK register
             </div>
           </div>
         </section>
@@ -175,10 +193,24 @@ function bootOs(): void {
           <div class="body">
             <table class="data mono">
               <tbody>
-                <tr><td>magic / version</td><td>"{{ header.magic }}" / {{ header.version }}</td></tr>
-                <tr><td>kernel blocks</td><td>{{ header.kblock }} … {{ (header.kblock ?? 0) + (header.kcount ?? 0) - 1 }} ({{ header.kcount }})</td></tr>
-                <tr><td>load / entry</td><td>0x{{ hex4(header.kload) }} / 0x{{ hex4(header.kentry) }}</td></tr>
-                <tr><td>checksum</td><td>0x{{ hex2(header.ksum ?? 0) }}</td></tr>
+                <tr>
+                  <td>magic / version</td>
+                  <td>"{{ header.magic }}" / {{ header.version }}</td>
+                </tr>
+                <tr>
+                  <td>kernel blocks</td>
+                  <td>
+                    {{ header.kblock }} … {{ (header.kblock ?? 0) + (header.kcount ?? 0) - 1 }} ({{ header.kcount }})
+                  </td>
+                </tr>
+                <tr>
+                  <td>load / entry</td>
+                  <td>0x{{ hex4(header.kload) }} / 0x{{ hex4(header.kentry) }}</td>
+                </tr>
+                <tr>
+                  <td>checksum</td>
+                  <td>0x{{ hex2(header.ksum ?? 0) }}</td>
+                </tr>
                 <tr v-for="p in header.progs" :key="p.name">
                   <td>program "{{ p.name }}"</td>
                   <td>blocks {{ p.block }}+{{ p.count }} → 0x{{ hex4(p.load) }}, entry 0x{{ hex4(p.entry) }}</td>

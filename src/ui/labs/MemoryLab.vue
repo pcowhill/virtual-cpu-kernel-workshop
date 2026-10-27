@@ -37,9 +37,13 @@ function search(): void {
   const v = s.view.value;
   if (!v || !searchText.value) return;
   const t = searchText.value.trim();
-  const needle = /^([0-9a-f]{2}\s*)+$/i.test(t) && t.length >= 2
-    ? t.split(/\s+/).flatMap((x) => x.match(/../g) ?? []).map((x) => parseInt(x, 16))
-    : [...t].map((c) => c.charCodeAt(0));
+  const needle =
+    /^([0-9a-f]{2}\s*)+$/i.test(t) && t.length >= 2
+      ? t
+          .split(/\s+/)
+          .flatMap((x) => x.match(/../g) ?? [])
+          .map((x) => parseInt(x, 16))
+      : [...t].map((c) => c.charCodeAt(0));
   const from = ((selected.value ?? base.value) + 1) & 0xffff;
   for (let k = 0; k < 0x10000; k++) {
     const a = (from + k) & 0xffff;
@@ -93,13 +97,24 @@ const selectedInfo = computed(() => {
         </header>
         <div class="body tools">
           <form @submit.prevent="jump">
-            <label>Go to <input v-model="jumpText" type="text" placeholder="0x2000 or label" aria-label="Address or label" data-testid="mem-goto" /></label>
+            <label
+              >Go to
+              <input
+                v-model="jumpText"
+                type="text"
+                placeholder="0x2000 or label"
+                aria-label="Address or label"
+                data-testid="mem-goto"
+            /></label>
             <button class="btn small" type="submit">Go</button>
           </form>
           <button class="btn small" @click="base = (s.view.value?.cpu.pc ?? 0) & 0xfff0">PC</button>
           <button class="btn small" @click="base = (s.view.value?.cpu.sp ?? 0) & 0xfff0">SP</button>
           <form @submit.prevent="search">
-            <label>Find <input v-model="searchText" type="text" placeholder="bytes (48 65) or text" aria-label="Search memory" /></label>
+            <label
+              >Find
+              <input v-model="searchText" type="text" placeholder="bytes (48 65) or text" aria-label="Search memory"
+            /></label>
             <button class="btn small" type="submit">Next</button>
           </form>
         </div>
@@ -108,8 +123,8 @@ const selectedInfo = computed(() => {
         </div>
         <div class="body legend faint">
           <span class="sw rom" />ROM <span class="sw kernel" />kernel RAM <span class="sw user" />user RAM
-          <span class="sw mmio" />devices · <b class="mono">highlighted</b> = changed since last update · outlined:
-          PC (blue), SP (orange) · double-click a byte to edit it (debugger action)
+          <span class="sw mmio" />devices · <b class="mono">highlighted</b> = changed since last update · outlined: PC
+          (blue), SP (orange) · double-click a byte to edit it (debugger action)
         </div>
       </section>
       <div class="side">
@@ -138,7 +153,9 @@ const selectedInfo = computed(() => {
           <header>Stack (from SP upward)</header>
           <div class="body mono stack">
             <div v-for="(e, i) in stack" :key="e.a" class="srow">
-              <span class="faint">SP+{{ i }}</span><span>{{ hex4(e.a) }}</span><b>{{ hex2(e.v) }}</b>
+              <span class="faint">SP+{{ i }}</span
+              ><span>{{ hex4(e.a) }}</span
+              ><b>{{ hex2(e.v) }}</b>
             </div>
           </div>
         </section>

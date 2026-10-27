@@ -72,7 +72,15 @@ function result(e: Example): CheckResult | 'running' | undefined {
         <header>
           <span class="t">{{ e.title }}</span>
           <span class="spacer" />
-          <span class="chip" :class="{ ok: e.difficulty === 'beginner', accent: e.difficulty === 'intermediate', warn: e.difficulty === 'advanced' }">{{ e.difficulty }}</span>
+          <span
+            class="chip"
+            :class="{
+              ok: e.difficulty === 'beginner',
+              accent: e.difficulty === 'intermediate',
+              warn: e.difficulty === 'advanced',
+            }"
+            >{{ e.difficulty }}</span
+          >
           <span class="chip">{{ e.kind === 'bare' ? 'bare metal' : 'with OS' }}</span>
         </header>
         <div class="body">
@@ -85,7 +93,13 @@ function result(e: Example): CheckResult | 'running' | undefined {
           <div class="actions">
             <button class="btn primary small" :data-testid="`load-${e.id}`" @click="load(e)">Load</button>
             <button class="btn small" :data-testid="`check-${e.id}`" @click="runCheck(e)">Run &amp; check</button>
-            <button v-if="e.kind === 'bare'" class="btn small" @click="(s.selectedFile.value = e.file!), (s.lab.value = 'editor')">View source</button>
+            <button
+              v-if="e.kind === 'bare'"
+              class="btn small"
+              @click="((s.selectedFile.value = e.file!), (s.lab.value = 'editor'))"
+            >
+              View source
+            </button>
           </div>
           <div v-if="result(e) === 'running'" class="muted small">running…</div>
           <div v-else-if="result(e)" class="checks small" :data-testid="`result-${e.id}`">

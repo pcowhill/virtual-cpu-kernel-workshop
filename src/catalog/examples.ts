@@ -65,7 +65,8 @@ export const EXAMPLES: Example[] = [
     difficulty: 'beginner',
     kind: 'bare',
     file: 'examples/register-arithmetic.asm',
-    description: 'Adds 16-bit numbers byte by byte with ADD/ADC, then with ADDP; shows a subtraction result read as unsigned and signed.',
+    description:
+      'Adds 16-bit numbers byte by byte with ADD/ADC, then with ADDP; shows a subtraction result read as unsigned and signed.',
     expected: 'P0 = 0x1410, R4 = 0xFE (254 or -2), R5 = 0x02, P1 = 0x1530.',
     concepts: ['8-bit registers', 'register pairs', 'carry chain', "two's complement"],
     lab: 'cpu',
@@ -77,7 +78,8 @@ export const EXAMPLES: Example[] = [
     difficulty: 'beginner',
     kind: 'bare',
     file: 'examples/overflow-carry.asm',
-    description: 'Four operations whose flags are copied from the PSW into RAM: signed overflow, unsigned carry, and both kinds of borrow.',
+    description:
+      'Four operations whose flags are copied from the PSW into RAM: signed overflow, unsigned carry, and both kinds of borrow.',
     expected: 'RAM 0x2000–0x2003 = 0C 03 08 05 (flag bits V N Z C).',
     concepts: ['flags', 'signed overflow', 'carry and borrow'],
     lab: 'cpu',
@@ -89,7 +91,8 @@ export const EXAMPLES: Example[] = [
     difficulty: 'beginner',
     kind: 'bare',
     file: 'examples/conditional-loop.asm',
-    description: 'Walks a table with a pointer and counts entries above 50 using unsigned (JLEU) and signed (JLE) branches.',
+    description:
+      'Walks a table with a pointer and counts entries above 50 using unsigned (JLEU) and signed (JLE) branches.',
     expected: 'R0 = 3 (unsigned), R1 = 2 (signed): 200 is -56 when read as signed.',
     concepts: ['branches', 'CMP', 'signed/unsigned conditions', 'pointers'],
     lab: 'cpu',
@@ -101,11 +104,16 @@ export const EXAMPLES: Example[] = [
     difficulty: 'intermediate',
     kind: 'bare',
     file: 'examples/memory-copy.asm',
-    description: 'Copies a NUL-terminated string from ROM to RAM with register-indirect loads and stores, then prints the copy.',
+    description:
+      'Copies a NUL-terminated string from ROM to RAM with register-indirect loads and stores, then prints the copy.',
     expected: 'RAM from 0x2100 holds the string; the terminal shows it.',
     concepts: ['register-indirect addressing', 'INCP', 'subroutines'],
     lab: 'memory',
-    check: { cycles: 30_000, mem: { 0x2100: 0x54 }, terminalIncludes: ['This string was copied from ROM to RAM 0x2100.'] },
+    check: {
+      cycles: 30_000,
+      mem: { 0x2100: 0x54 },
+      terminalIncludes: ['This string was copied from ROM to RAM 0x2100.'],
+    },
   },
   {
     id: 'stack-demo',
@@ -173,7 +181,8 @@ export const EXAMPLES: Example[] = [
     difficulty: 'advanced',
     kind: 'bare',
     file: 'examples/timer-interrupt.asm',
-    description: 'Programs the timer, unmasks IRQ 0, enables interrupts and handles 10 ticks in an interrupt handler while the main program sleeps in HLT.',
+    description:
+      'Programs the timer, unmasks IRQ 0, enables interrupts and handles 10 ticks in an interrupt handler while the main program sleeps in HLT.',
     expected: '10 dots, then "10 timer interrupts handled."; RAM 0x2000 = 10.',
     concepts: ['interrupts', 'vector table', 'RTI', 'HLT', 'acknowledging devices'],
     lab: 'kernel',
@@ -185,7 +194,8 @@ export const EXAMPLES: Example[] = [
     difficulty: 'advanced',
     kind: 'bare',
     file: 'examples/syscall-trap.asm',
-    description: 'A miniature kernel enters user mode with RTI; the user code prints through SYS traps handled in supervisor mode.',
+    description:
+      'A miniature kernel enters user mode with RTI; the user code prints through SYS traps handled in supervisor mode.',
     expected: '"Printed by user code through SYS" on the terminal.',
     concepts: ['privilege modes', 'SYS trap', 'RTI', 'banked stack pointers'],
     lab: 'kernel',
@@ -197,7 +207,8 @@ export const EXAMPLES: Example[] = [
     difficulty: 'advanced',
     kind: 'bare',
     file: 'examples/privileged-fault.asm',
-    description: 'User code executes CLI; the CPU raises a privilege fault (vector 2) and the handler reports the faulting PC.',
+    description:
+      'User code executes CLI; the CPU raises a privilege fault (vector 2) and the handler reports the faulting PC.',
     expected: '"Privilege fault! Faulting instruction at 0x6003".',
     concepts: ['privileged instructions', 'faults', 'exception frame'],
     lab: 'kernel',
@@ -209,7 +220,8 @@ export const EXAMPLES: Example[] = [
     difficulty: 'advanced',
     kind: 'bare',
     file: 'examples/protection-fault.asm',
-    description: 'User code may access only 0x6000–0x6FFF; its store to 0x7000 is blocked and reported with CAUSE and FADDR.',
+    description:
+      'User code may access only 0x6000–0x6FFF; its store to 0x7000 is blocked and reported with CAUSE and FADDR.',
     expected: '"Memory fault: CAUSE=0x04 FADDR=0x7000".',
     concepts: ['base/limit protection', 'UBASE/ULIMIT', 'CAUSE/FADDR'],
     lab: 'memory',
@@ -221,7 +233,8 @@ export const EXAMPLES: Example[] = [
     difficulty: 'intermediate',
     kind: 'bare',
     file: 'examples/storage-read.asm',
-    description: 'Selects block 128, issues READ, polls until DONE and copies 256 bytes through the DATA port (programmed I/O).',
+    description:
+      'Selects block 128, issues READ, polls until DONE and copies 256 bytes through the DATA port (programmed I/O).',
     expected: 'The text stored in block 128 appears on the terminal.',
     concepts: ['block storage', 'command/status registers', 'programmed I/O'],
     lab: 'devices',
@@ -233,13 +246,19 @@ export const EXAMPLES: Example[] = [
     difficulty: 'intermediate',
     kind: 'os',
     programs: [p('hello')],
-    description: 'Power on the full system: the ROM loads the kernel from storage, the kernel loads one program and runs it in user mode.',
+    description:
+      'Power on the full system: the ROM loads the kernel from storage, the kernel loads one program and runs it in user mode.',
     expected: 'Boot messages, "Hello from user mode! I am pid 1", then the system halts.',
     concepts: ['reset vector', 'firmware', 'kernel loading', 'kernel initialisation'],
     lab: 'boot',
     check: {
       cycles: 600_000,
-      terminalIncludes: ['checksum OK', 'VC-8 Workshop Kernel v1.0', 'Hello from user mode! I am pid 1', 'system halted'],
+      terminalIncludes: [
+        'checksum OK',
+        'VC-8 Workshop Kernel v1.0',
+        'Hello from user mode! I am pid 1',
+        'system halted',
+      ],
       processes: [{ name: 'hello', exitCode: 0, state: 'exited' }],
     },
   },
@@ -267,7 +286,8 @@ export const EXAMPLES: Example[] = [
     difficulty: 'advanced',
     kind: 'os',
     programs: [p('spinner'), p('spinner')],
-    description: 'Two pure-computation loops with no system calls. Only timer interrupts and kernel context switches let both progress.',
+    description:
+      'Two pure-computation loops with no system calls. Only timer interrupts and kernel context switches let both progress.',
     expected: 'Both counters advance in turn (Processes lab timeline); both exit with code 0.',
     concepts: ['timer interrupt', 'context switch', 'preemption'],
     lab: 'processes',
@@ -303,7 +323,8 @@ export const EXAMPLES: Example[] = [
     difficulty: 'intermediate',
     kind: 'os',
     programs: [p('echo'), p('blinker')],
-    description: 'echo blocks in getc until the keyboard interrupt delivers keys; blinker sleeps on timer ticks between LED updates.',
+    description:
+      'echo blocks in getc until the keyboard interrupt delivers keys; blinker sleeps on timer ticks between LED updates.',
     expected: 'Typed "hi~" is echoed as "HI" and echo exits; the LEDs walk and turn off.',
     concepts: ['device drivers', 'blocking', 'keyboard interrupt', 'sleep'],
     lab: 'devices',
@@ -324,7 +345,8 @@ export const EXAMPLES: Example[] = [
     difficulty: 'advanced',
     kind: 'os',
     programs: [p('intruder'), p('kspy'), p('privileged'), p('digits')],
-    description: 'Three misbehaving programs are each stopped by the CPU and terminated by the kernel; a well-behaved one keeps running.',
+    description:
+      'Three misbehaving programs are each stopped by the CPU and terminated by the kernel; a well-behaved one keeps running.',
     expected: 'intruder, kspy and privileged are killed with clear reasons; digits exits with code 0.',
     concepts: ['memory protection', 'privilege', 'fault handling'],
     lab: 'kernel',
@@ -349,7 +371,8 @@ export const EXAMPLES: Example[] = [
     difficulty: 'intermediate',
     kind: 'os',
     programs: [p('badcall'), p('reader')],
-    description: 'badcall makes an unknown call and passes a kernel pointer; reader asks the kernel to read a disk block.',
+    description:
+      'badcall makes an unknown call and passes a kernel pointer; reader asks the kernel to read a disk block.',
     expected: 'The kernel rejects both bad calls; the block-128 text is printed.',
     concepts: ['system-call ABI', 'pointer validation', 'kernel drivers'],
     lab: 'kernel',
@@ -414,7 +437,8 @@ export function evaluateCheck(check: ExampleCheck, st: CheckState): CheckResult 
     const got = st.peek(Number(a));
     t(got === v, `RAM ${h(Number(a))} = ${h(v)}${got === v ? '' : ` (got ${h(got)})`}`);
   }
-  if (check.leds !== undefined) t(st.leds === check.leds, `LEDs = ${h(check.leds)}${st.leds === check.leds ? '' : ` (got ${h(st.leds)})`}`);
+  if (check.leds !== undefined)
+    t(st.leds === check.leds, `LEDs = ${h(check.leds)}${st.leds === check.leds ? '' : ` (got ${h(st.leds)})`}`);
   if (check.processes) {
     const procs = st.processes ?? [];
     check.processes.forEach((want, i) => {

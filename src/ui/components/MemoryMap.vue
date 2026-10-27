@@ -73,11 +73,13 @@ const current = computed(() => s.view.value?.os?.current ?? null);
     <div v-if="cpu" class="legend">
       <div>
         <b>Protection window</b> <span class="mono">[{{ hex4(cpu.ubase) }}, {{ hex4(cpu.ulimit) }})</span>
-        <span class="chip" :class="userMode ? 'ok' : ''">{{ userMode ? 'enforced now (user mode)' : 'inactive (supervisor mode)' }}</span>
+        <span class="chip" :class="userMode ? 'ok' : ''">{{
+          userMode ? 'enforced now (user mode)' : 'inactive (supervisor mode)'
+        }}</span>
       </div>
       <div class="muted small">
-        User-mode code may only access user RAM inside the window; everything else raises a memory fault. Click a
-        region to view it.
+        User-mode code may only access user RAM inside the window; everything else raises a memory fault. Click a region
+        to view it.
       </div>
     </div>
   </div>

@@ -55,7 +55,12 @@ function onKeydown(e: KeyboardEvent): void {
     e.preventDefault();
     const start = el.selectionStart;
     const end = el.selectionEnd;
-    el.setRangeText('        '.slice(0, 8 - ((start - el.value.lastIndexOf('\n', start - 1) - 1) % 8)), start, end, 'end');
+    el.setRangeText(
+      '        '.slice(0, 8 - ((start - el.value.lastIndexOf('\n', start - 1) - 1) % 8)),
+      start,
+      end,
+      'end',
+    );
     emit('update:modelValue', el.value);
   }
 }
@@ -68,7 +73,8 @@ watch(
     const lh = 19.5;
     const top = (line - 1) * lh;
     const sc = scroller.value;
-    if (top < sc.scrollTop || top > sc.scrollTop + sc.clientHeight - 2 * lh) sc.scrollTop = Math.max(0, top - sc.clientHeight / 3);
+    if (top < sc.scrollTop || top > sc.scrollTop + sc.clientHeight - 2 * lh)
+      sc.scrollTop = Math.max(0, top - sc.clientHeight / 3);
   },
 );
 </script>

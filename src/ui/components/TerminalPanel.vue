@@ -65,8 +65,7 @@ function onKey(e: KeyboardEvent): void {
       :class="{ focused }"
       @focus="focused = true"
       @blur="focused = false"
-      @keydown="onKey"
-      >{{ text }}<span v-if="focused" class="cursor">▌</span></pre>
+      @keydown="onKey">{{ text }}<span v-if="focused" class="cursor">▌</span></pre>
   </section>
 </template>
 

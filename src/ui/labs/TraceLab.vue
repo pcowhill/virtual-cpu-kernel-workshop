@@ -51,8 +51,23 @@ async function exportTrace(fmt: 'json' | 'csv'): Promise<void> {
   const rows = ['seq,cycle,cycles,kind,mode,pc,bytes,instruction,changes'];
   for (const e of all) {
     const text = e.kind === 'instruction' ? (disassembleBytes(e.bytes, e.pc)[0]?.text ?? '') : e.kind;
-    const ch = [...e.regs.map((r) => `${r.name}=${r.new.toString(16)}`), ...e.mem.map((m) => `[${hex4(m.addr)}]=${m.new.toString(16)}`)].join(' ');
-    rows.push([e.seq, e.cycle, e.cycles, e.kind, e.supervisor ? 'S' : 'U', hex4(e.pc), e.bytes.map((b) => b.toString(16)).join(' '), `"${text}"`, `"${ch}"`].join(','));
+    const ch = [
+      ...e.regs.map((r) => `${r.name}=${r.new.toString(16)}`),
+      ...e.mem.map((m) => `[${hex4(m.addr)}]=${m.new.toString(16)}`),
+    ].join(' ');
+    rows.push(
+      [
+        e.seq,
+        e.cycle,
+        e.cycles,
+        e.kind,
+        e.supervisor ? 'S' : 'U',
+        hex4(e.pc),
+        e.bytes.map((b) => b.toString(16)).join(' '),
+        `"${text}"`,
+        `"${ch}"`,
+      ].join(','),
+    );
   }
   download('vc8-trace.csv', rows.join('\n'), 'text/csv');
 }
@@ -69,16 +84,37 @@ async function exportTrace(fmt: 'json' | 'csv'): Promise<void> {
         <header>Breakpoints</header>
         <div class="body">
           <form class="row" @submit.prevent="addBp">
-            <input v-model="bpText" type="text" placeholder="address or label" aria-label="Breakpoint address or label" data-testid="bp-input" />
+            <input
+              v-model="bpText"
+              type="text"
+              placeholder="address or label"
+              aria-label="Breakpoint address or label"
+              data-testid="bp-input"
+            />
             <button class="btn small" type="submit" data-testid="bp-add">Add</button>
-            <button class="btn small" type="button" :disabled="!s.debug.breakpoints.length" @click="s.debug.breakpoints.splice(0)">Clear all</button>
+            <button
+              class="btn small"
+              type="button"
+              :disabled="!s.debug.breakpoints.length"
+              @click="s.debug.breakpoints.splice(0)"
+            >
+              Clear all
+            </button>
           </form>
           <ul class="list mono">
             <li v-for="(a, i) in s.debug.breakpoints" :key="a">
               ● {{ hex4(a) }} <span class="accent">{{ labels(a) ?? '' }}</span>
-              <button class="btn small" :aria-label="`Remove breakpoint ${hex4(a)}`" @click="s.debug.breakpoints.splice(i, 1)">✕</button>
+              <button
+                class="btn small"
+                :aria-label="`Remove breakpoint ${hex4(a)}`"
+                @click="s.debug.breakpoints.splice(i, 1)"
+              >
+                ✕
+              </button>
             </li>
-            <li v-if="!s.debug.breakpoints.length" class="muted">None. Click the gutter in a disassembly or the editor.</li>
+            <li v-if="!s.debug.breakpoints.length" class="muted">
+              None. Click the gutter in a disassembly or the editor.
+            </li>
           </ul>
         </div>
       </section>
@@ -86,26 +122,45 @@ async function exportTrace(fmt: 'json' | 'csv'): Promise<void> {
         <header>Watchpoints</header>
         <div class="body">
           <form class="row" @submit.prevent="addWp">
-            <input v-model="wpText" type="text" placeholder="address or label" aria-label="Watchpoint address or label" />
-            <select v-model="wpKind" aria-label="Access"><option value="w">write</option><option value="r">read</option><option value="rw">read/write</option></select>
+            <input
+              v-model="wpText"
+              type="text"
+              placeholder="address or label"
+              aria-label="Watchpoint address or label"
+            />
+            <select v-model="wpKind" aria-label="Access">
+              <option value="w">write</option>
+              <option value="r">read</option>
+              <option value="rw">read/write</option>
+            </select>
             <button class="btn small" type="submit">Add</button>
           </form>
           <ul class="list mono">
             <li v-for="(w, i) in s.debug.watchpoints" :key="i">
               {{ w[1] }} {{ hex4(w[0]) }} <span class="accent">{{ labels(w[0]) ?? '' }}</span>
-              <button class="btn small" :aria-label="`Remove watchpoint ${hex4(w[0])}`" @click="s.debug.watchpoints.splice(i, 1)">✕</button>
+              <button
+                class="btn small"
+                :aria-label="`Remove watchpoint ${hex4(w[0])}`"
+                @click="s.debug.watchpoints.splice(i, 1)"
+              >
+                ✕
+              </button>
             </li>
             <li v-if="!s.debug.watchpoints.length" class="muted">None.</li>
           </ul>
           <div v-if="v?.lastWatchHit" class="mono small">
-            last hit: {{ v.lastWatchHit.kind }} {{ hex4(v.lastWatchHit.addr) }} = {{ v.lastWatchHit.value.toString(16) }} by {{ hex4(v.lastWatchHit.pc) }} @ cycle {{ v.lastWatchHit.cycle }}
+            last hit: {{ v.lastWatchHit.kind }} {{ hex4(v.lastWatchHit.addr) }} =
+            {{ v.lastWatchHit.value.toString(16) }} by {{ hex4(v.lastWatchHit.pc) }} @ cycle {{ v.lastWatchHit.cycle }}
           </div>
         </div>
       </section>
       <section class="panel">
         <header>Stop on…</header>
         <div class="body checks">
-          <label><input v-model="s.debug.breakOn.faults" type="checkbox" /> faults (illegal instruction, privilege, memory)</label>
+          <label
+            ><input v-model="s.debug.breakOn.faults" type="checkbox" /> faults (illegal instruction, privilege,
+            memory)</label
+          >
           <label><input v-model="s.debug.breakOn.traps" type="checkbox" /> traps (SYS, BRK)</label>
           <label><input v-model="s.debug.breakOn.interrupts" type="checkbox" /> hardware interrupts</label>
           <p class="faint small">The machine pauses before the CPU enters the handler, so you can inspect the cause.</p>
@@ -117,9 +172,13 @@ async function exportTrace(fmt: 'json' | 'csv'): Promise<void> {
         Execution trace
         <span class="spacer" />
         <label class="tl"><input v-model="s.debug.traceEnabled" type="checkbox" /> record</label>
-        <label class="tl">keep
+        <label class="tl"
+          >keep
           <select v-model.number="s.debug.traceCapacity" aria-label="Trace capacity">
-            <option :value="1000">1 000</option><option :value="5000">5 000</option><option :value="20000">20 000</option><option :value="100000">100 000</option>
+            <option :value="1000">1 000</option>
+            <option :value="5000">5 000</option>
+            <option :value="20000">20 000</option>
+            <option :value="100000">100 000</option>
           </select>
         </label>
         <select v-model="filter" aria-label="Trace filter">
@@ -134,7 +193,10 @@ async function exportTrace(fmt: 'json' | 'csv'): Promise<void> {
       </header>
       <div class="body scroll tracebox">
         <TraceTable :limit="300" :filter="filter" />
-        <p class="faint small">Showing the newest 300 of {{ v?.traceTotal ?? 0 }} recorded entries (the UI receives a bounded window; export downloads everything retained).</p>
+        <p class="faint small">
+          Showing the newest 300 of {{ v?.traceTotal ?? 0 }} recorded entries (the UI receives a bounded window; export
+          downloads everything retained).
+        </p>
       </div>
     </section>
   </div>

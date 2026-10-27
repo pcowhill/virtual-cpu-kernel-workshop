@@ -46,14 +46,19 @@ const last = computed(() => cpu.value?.lastOp ?? null);
       The full micro-program is selected by DECODE, after the opcode has been fetched.
     </p>
     <div v-if="last" class="last">
-      <div class="small muted">Last micro-operation: <b class="mono">{{ last.name }}</b> — {{ last.rtl }}</div>
+      <div class="small muted">
+        Last micro-operation: <b class="mono">{{ last.name }}</b> — {{ last.rtl }}
+      </div>
       <div v-if="last.bus.op !== 'none'" class="small mono">
-        bus {{ last.bus.op }} addr {{ hex4(last.bus.addr) }}{{ last.bus.data >= 0 ? ` data ${hex2(last.bus.data)}` : '' }}
+        bus {{ last.bus.op }} addr {{ hex4(last.bus.addr)
+        }}{{ last.bus.data >= 0 ? ` data ${hex2(last.bus.data)}` : '' }}
       </div>
       <div v-if="last.alu" class="small mono">
         ALU {{ last.alu.op }}: A={{ hex2(last.alu.a) }} B={{ hex2(last.alu.b) }} → Y={{ hex2(last.alu.y) }}
       </div>
-      <div v-if="last.fault" class="small err">fault: {{ causeLabel(last.fault.cause) }} at {{ hex4(last.fault.addr) }}</div>
+      <div v-if="last.fault" class="small err">
+        fault: {{ causeLabel(last.fault.cause) }} at {{ hex4(last.fault.addr) }}
+      </div>
     </div>
   </div>
 </template>

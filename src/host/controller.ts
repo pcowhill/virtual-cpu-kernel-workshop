@@ -71,7 +71,10 @@ export class MachineController {
       case 'run':
         if (!this.config) return;
         if (m.cpu.halted) {
-          this.stop = { reason: m.cpu.status === 'off' ? 'power-off' : 'machine-check', detail: m.cpu.machineCheckReason };
+          this.stop = {
+            reason: m.cpu.status === 'off' ? 'power-off' : 'machine-check',
+            detail: m.cpu.machineCheckReason,
+          };
           return;
         }
         this.runState = 'running';
@@ -286,7 +289,18 @@ export class MachineController {
       cause: c.cause,
       faddr: c.faddr,
       kscratch: c.kscratch,
-      latches: { ir: c.ir, opr: c.opr, imm: c.imm, mar: c.mar, mdr: c.mdr, a: c.a, b: c.b, y: c.y, t16: c.t16, tmp: c.tmp },
+      latches: {
+        ir: c.ir,
+        opr: c.opr,
+        imm: c.imm,
+        mar: c.mar,
+        mdr: c.mdr,
+        a: c.a,
+        b: c.b,
+        y: c.y,
+        t16: c.t16,
+        tmp: c.tmp,
+      },
       status: c.status,
       machineCheckReason: c.machineCheckReason,
       instrStart: c.instrStart,
@@ -301,7 +315,9 @@ export class MachineController {
             fault: act.fault ? { ...act.fault } : null,
           }
         : null,
-      pendingException: c.exception ? { vector: c.exception.vector, cause: c.exception.cause, faddr: c.exception.faddr } : null,
+      pendingException: c.exception
+        ? { vector: c.exception.vector, cause: c.exception.cause, faddr: c.exception.faddr }
+        : null,
     };
     let os: MachineView['os'] = null;
     if (this.layout) {

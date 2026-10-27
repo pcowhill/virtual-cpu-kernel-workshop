@@ -112,7 +112,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
             :data-testid="`nav-${l.id}`"
             @click="s.lab.value = l.id"
           >
-            <span class="icon" aria-hidden="true">{{ l.icon }}</span>{{ l.label }}
+            <span class="icon" aria-hidden="true">{{ l.icon }}</span
+            >{{ l.label }}
           </button>
         </div>
         <div class="shortcuts faint">

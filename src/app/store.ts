@@ -103,7 +103,10 @@ function createStore() {
   function syncDebug(): void {
     // Plain copies: reactive proxies cannot be posted to the worker.
     send({ type: 'setBreakpoints', addresses: [...debug.breakpoints] });
-    send({ type: 'setWatchpoints', watchpoints: debug.watchpoints.map(([a, k]) => [a, k] as [number, 'r' | 'w' | 'rw']) });
+    send({
+      type: 'setWatchpoints',
+      watchpoints: debug.watchpoints.map(([a, k]) => [a, k] as [number, 'r' | 'w' | 'rw']),
+    });
     send({ type: 'setBreakOn', breakOn: { ...debug.breakOn } });
     send({ type: 'setTrace', enabled: debug.traceEnabled, capacity: debug.traceCapacity });
     send({ type: 'setSpeed', speed: debug.speed });
@@ -124,7 +127,10 @@ function createStore() {
   function buildAndLoad(): boolean {
     const out = runBuild();
     if (!out.ok || !out.load) {
-      notify('error', `Build failed: ${out.diagnostics.filter((d) => d.severity === 'error').length} error(s). See the Assembly Editor.`);
+      notify(
+        'error',
+        `Build failed: ${out.diagnostics.filter((d) => d.severity === 'error').length} error(s). See the Assembly Editor.`,
+      );
       return false;
     }
     send({ type: 'pause' });

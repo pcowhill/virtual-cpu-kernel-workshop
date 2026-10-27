@@ -40,7 +40,8 @@ const watched = computed(() => new Map(s.debug.watchpoints));
 
 function classes(a: number): string[] {
   const c = [`r-${regionOf(a)}`];
-  if (a >= MEM.URAM_START && a <= MEM.URAM_END && a >= userWindow.value.lo && a < userWindow.value.hi) c.push('in-window');
+  if (a >= MEM.URAM_START && a <= MEM.URAM_END && a >= userWindow.value.lo && a < userWindow.value.hi)
+    c.push('in-window');
   if (a === sp.value) c.push('sp');
   if (a === pc.value) c.push('pc');
   if (watched.value.has(a)) c.push('watch');
@@ -55,7 +56,10 @@ function select(a: number): void {
 
 function startEdit(a: number): void {
   if (a >= MEM.MMIO_START) {
-    s.notify('info', 'Device registers cannot be edited by the debugger; drive them from the Devices lab or guest code.');
+    s.notify(
+      'info',
+      'Device registers cannot be edited by the debugger; drive them from the Devices lab or guest code.',
+    );
     return;
   }
   editing.value = a;
@@ -67,7 +71,10 @@ function commit(): void {
   const v = parseInt(editValue.value, 16);
   if (!Number.isNaN(v) && v >= 0 && v <= 255) {
     s.send({ type: 'poke', address: editing.value, value: v });
-    s.notify('info', `Debugger write: M[0x${hex4(editing.value)}] ← 0x${hex2(v)} (a privileged debugger action, not guest behaviour).`);
+    s.notify(
+      'info',
+      `Debugger write: M[0x${hex4(editing.value)}] ← 0x${hex2(v)} (a privileged debugger action, not guest behaviour).`,
+    );
   }
   editing.value = null;
 }
@@ -99,6 +106,7 @@ function commit(): void {
           class="cell"
           :class="[...classes(c.a), { changed: c.changed }]"
           role="gridcell"
+          :data-addr="c.a"
           :title="`${hex4(c.a)}: 0x${hex2(c.v)} = ${c.v} — double-click to edit (debugger)`"
           @click="select(c.a)"
           @dblclick="startEdit(c.a)"

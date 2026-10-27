@@ -11,7 +11,6 @@ const s = useStore();
 const v = computed(() => s.view.value);
 const filter = ref<'all' | 'syscall' | 'irq' | 'fault'>('all');
 
-
 const vectors = computed(() => {
   const view = v.value;
   if (!view) return [];
@@ -20,12 +19,14 @@ const vectors = computed(() => {
   return Array.from({ length: 16 }, (_, i) => {
     const a = (base + 2 * i) & 0xffff;
     const target = view.memory[a]! | (view.memory[(a + 1) & 0xffff]! << 8);
-    return { i, name: VECTOR_NAMES[i], target, label: target === 0xffff ? '(no handler)' : labels(target) ?? '' };
+    return { i, name: VECTOR_NAMES[i], target, label: target === 0xffff ? '(no handler)' : (labels(target) ?? '') };
   });
 });
 
 const events = computed(() => {
-  const list = (v.value?.events ?? []).filter((e) => e.type === 'exception' || e.type === 'rti' || e.type === 'halt' || e.type === 'wake');
+  const list = (v.value?.events ?? []).filter(
+    (e) => e.type === 'exception' || e.type === 'rti' || e.type === 'halt' || e.type === 'wake',
+  );
   return list
     .filter((e) => {
       if (filter.value === 'all') return true;
@@ -39,7 +40,8 @@ const events = computed(() => {
 });
 
 function describe(e: (typeof events.value)[number]): string {
-  if (e.type === 'rti') return `RTI → ${e.toUser ? 'user' : 'supervisor'} mode at ${hex4(e.pc)}${e.toUser ? ` (window from ${hex4(e.ubase ?? 0)})` : ''}`;
+  if (e.type === 'rti')
+    return `RTI → ${e.toUser ? 'user' : 'supervisor'} mode at ${hex4(e.pc)}${e.toUser ? ` (window from ${hex4(e.ubase ?? 0)})` : ''}`;
   if (e.type === 'halt') return 'HLT: CPU waits for an interrupt line';
   if (e.type === 'wake') return 'woke from HLT';
   const v0 = e.vector ?? 0;
@@ -83,7 +85,14 @@ const ie = computed(() => ((v.value?.cpu.psw ?? 0) & PSW.I) !== 0);
         <header>Vector table at VBASE = {{ hex4(v?.cpu.vbase ?? 0) }}</header>
         <div class="body">
           <table class="data mono">
-            <thead><tr><th>#</th><th>event</th><th>handler</th><th></th></tr></thead>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>event</th>
+                <th>handler</th>
+                <th></th>
+              </tr>
+            </thead>
             <tbody>
               <tr v-for="x in vectors" :key="x.i" :class="{ faint: x.target === 0xffff }">
                 <td>{{ x.i }}</td>
@@ -100,19 +109,30 @@ const ie = computed(() => ((v.value?.cpu.psw ?? 0) & PSW.I) !== 0);
           <header>Interrupt controller</header>
           <div class="body">
             <table class="data mono">
-              <thead><tr><th>line</th><th>device</th><th>pending</th><th>enabled (MASK)</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>line</th>
+                  <th>device</th>
+                  <th>pending</th>
+                  <th>enabled (MASK)</th>
+                </tr>
+              </thead>
               <tbody>
                 <tr v-for="(name, i) in ['timer', 'keyboard', 'storage']" :key="i">
                   <td>IRQ{{ i }}</td>
                   <td>{{ name }}</td>
-                  <td><span class="chip" :class="(pic?.pending ?? 0) & (1 << i) ? 'warn' : ''">{{ (pic?.pending ?? 0) & (1 << i) ? 'asserted' : '—' }}</span></td>
+                  <td>
+                    <span class="chip" :class="(pic?.pending ?? 0) & (1 << i) ? 'warn' : ''">{{
+                      (pic?.pending ?? 0) & (1 << i) ? 'asserted' : '—'
+                    }}</span>
+                  </td>
                   <td>{{ (pic?.mask ?? 0) & (1 << i) ? 'yes' : 'no' }}</td>
                 </tr>
               </tbody>
             </table>
             <p class="small">
-              PSW.I = <b>{{ ie ? 1 : 0 }}</b> — an enabled, pending line interrupts the CPU at the next instruction boundary
-              only when PSW.I = 1. Exception entry clears I.
+              PSW.I = <b>{{ ie ? 1 : 0 }}</b> — an enabled, pending line interrupts the CPU at the next instruction
+              boundary only when PSW.I = 1. Exception entry clears I.
             </p>
           </div>
         </section>
@@ -142,13 +162,20 @@ const ie = computed(() => ((v.value?.cpu.psw ?? 0) & PSW.I) !== 0);
       </header>
       <div class="body scroll log">
         <table class="data mono">
-          <thead><tr><th>cycle</th><th>event</th></tr></thead>
+          <thead>
+            <tr>
+              <th>cycle</th>
+              <th>event</th>
+            </tr>
+          </thead>
           <tbody>
             <tr v-for="(e, i) in events" :key="i" :class="`e-${e.type}`">
               <td>{{ e.cycle }}</td>
               <td>{{ describe(e) }}</td>
             </tr>
-            <tr v-if="!events.length"><td colspan="2" class="muted">No exceptions yet.</td></tr>
+            <tr v-if="!events.length">
+              <td colspan="2" class="muted">No exceptions yet.</td>
+            </tr>
           </tbody>
         </table>
       </div>

@@ -19,7 +19,10 @@ function setReg(): void {
     return;
   }
   s.send({ type: 'setRegister', name: regName.value, value: v });
-  s.notify('info', `Debugger set ${regName.value} = 0x${v.toString(16).toUpperCase()} (a debugger action, not guest behaviour).`);
+  s.notify(
+    'info',
+    `Debugger set ${regName.value} = 0x${v.toString(16).toUpperCase()} (a debugger action, not guest behaviour).`,
+  );
 }
 </script>
 
@@ -39,7 +42,28 @@ function setReg(): void {
           <header>Debugger: edit a register</header>
           <form class="body edit" @submit.prevent="setReg">
             <select v-model="regName" aria-label="Register">
-              <option v-for="r in ['R0', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'PC', 'SP', 'KSP', 'USP', 'PSW', 'VBASE', 'UBASE', 'ULIMIT', 'KSCRATCH']" :key="r">
+              <option
+                v-for="r in [
+                  'R0',
+                  'R1',
+                  'R2',
+                  'R3',
+                  'R4',
+                  'R5',
+                  'R6',
+                  'R7',
+                  'PC',
+                  'SP',
+                  'KSP',
+                  'USP',
+                  'PSW',
+                  'VBASE',
+                  'UBASE',
+                  'ULIMIT',
+                  'KSCRATCH',
+                ]"
+                :key="r"
+              >
                 {{ r }}
               </option>
             </select>

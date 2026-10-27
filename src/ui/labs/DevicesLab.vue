@@ -105,16 +105,27 @@ function peek(a: number, wide = false): string {
           <header>Keyboard input</header>
           <div class="body">
             <form class="kbd-form" @submit.prevent="sendText">
-              <input v-model="text" type="text" placeholder="type text, Enter sends it" aria-label="Text to type on the virtual keyboard" data-testid="kbd-input" />
+              <input
+                v-model="text"
+                type="text"
+                placeholder="type text, Enter sends it"
+                aria-label="Text to type on the virtual keyboard"
+                data-testid="kbd-input"
+              />
               <button class="btn small" type="submit">Send</button>
               <button class="btn small" type="button" @click="s.send({ type: 'injectKeys', bytes: [13] })">⏎ CR</button>
             </form>
             <div v-if="d" class="mono small">
               FIFO ({{ d.keyboard.queue.length }}/16): {{ d.keyboard.queue.map(hex2).join(' ') || 'empty' }}
               <span v-if="d.keyboard.overflow" class="chip err">overflow</span>
-              <span class="chip" :class="d.keyboard.irq ? 'warn' : ''">IRQ1 {{ d.keyboard.irq ? 'asserted' : 'idle' }}</span>
+              <span class="chip" :class="d.keyboard.irq ? 'warn' : ''"
+                >IRQ1 {{ d.keyboard.irq ? 'asserted' : 'idle' }}</span
+              >
             </div>
-            <p class="faint small">Keys are delivered at the current simulated cycle, so a run with the same inputs at the same cycles is reproducible.</p>
+            <p class="faint small">
+              Keys are delivered at the current simulated cycle, so a run with the same inputs at the same cycles is
+              reproducible.
+            </p>
           </div>
         </section>
       </div>
@@ -123,7 +134,13 @@ function peek(a: number, wide = false): string {
           <header>LEDs and switches</header>
           <div class="body">
             <div class="leds" role="img" :aria-label="`LEDs: ${bin8(d.gpio.leds)}`" data-testid="leds">
-              <span v-for="i in 8" :key="i" class="led" :class="{ on: d.gpio.leds & (1 << (8 - i)) }" :title="`LED ${8 - i}`" />
+              <span
+                v-for="i in 8"
+                :key="i"
+                class="led"
+                :class="{ on: d.gpio.leds & (1 << (8 - i)) }"
+                :title="`LED ${8 - i}`"
+              />
               <span class="mono small">{{ bin8(d.gpio.leds) }} (writes: {{ d.gpio.ledWrites }})</span>
             </div>
             <div class="switches">
@@ -139,12 +156,15 @@ function peek(a: number, wide = false): string {
           <div class="body mono small status">
             <div>
               timer: CTRL {{ hex2(d.timer.ctrl) }} RELOAD {{ d.timer.reload }} COUNT {{ d.timer.count }}
-              <span class="chip" :class="d.timer.irq ? 'warn' : ''">{{ d.timer.expired ? 'EXPIRED' : 'counting' }}</span>
+              <span class="chip" :class="d.timer.irq ? 'warn' : ''">{{
+                d.timer.expired ? 'EXPIRED' : 'counting'
+              }}</span>
               expirations {{ d.timer.expirations }}
             </div>
             <div>
-              storage: STATUS {{ hex2(d.storage.status) }} BLOCK {{ d.storage.block }} ERR {{ d.storage.errcode }} ptr {{ d.storage.ptr }}
-              busy {{ d.storage.busyCycles }} · reads {{ d.storage.reads }} writes {{ d.storage.writes }}
+              storage: STATUS {{ hex2(d.storage.status) }} BLOCK {{ d.storage.block }} ERR {{ d.storage.errcode }} ptr
+              {{ d.storage.ptr }} busy {{ d.storage.busyCycles }} · reads {{ d.storage.reads }} writes
+              {{ d.storage.writes }}
             </div>
             <div>PIC: PENDING {{ bin8(d.pic.pending) }} MASK {{ bin8(d.pic.mask) }}</div>
           </div>
@@ -155,7 +175,9 @@ function peek(a: number, wide = false): string {
             <table class="data mono">
               <tbody>
                 <template v-for="g in REGS" :key="g.dev">
-                  <tr><th colspan="4">{{ g.dev }}</th></tr>
+                  <tr>
+                    <th colspan="4">{{ g.dev }}</th>
+                  </tr>
                   <tr v-for="r in g.regs" :key="r[0]">
                     <td>{{ hex4(r[1]) }}</td>
                     <td>{{ r[0] }}</td>

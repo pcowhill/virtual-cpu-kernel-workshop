@@ -16,7 +16,8 @@ const status = computed(() => {
   const st = view.cpu.status;
   if (st === 'machine-check') return { text: 'Machine check', cls: 'err' };
   if (st === 'off') return { text: 'Powered off', cls: 'warn' };
-  if (view.runState === 'running') return { text: st === 'waiting' ? 'Running · waiting for interrupt' : 'Running', cls: 'ok' };
+  if (view.runState === 'running')
+    return { text: st === 'waiting' ? 'Running · waiting for interrupt' : 'Running', cls: 'ok' };
   if (view.stop?.reason === 'breakpoint') return { text: 'Paused at breakpoint', cls: 'accent' };
   if (view.stop?.reason === 'watchpoint') return { text: 'Paused at watchpoint', cls: 'accent' };
   if (view.stop?.reason === 'exception') return { text: 'Paused: exception', cls: 'warn' };
@@ -94,7 +95,10 @@ function runPause(): void {
         µStep
       </button>
     </div>
-    <label class="group speed" title="Simulated clock rate. Changes how fast cycles run in real time, never the result.">
+    <label
+      class="group speed"
+      title="Simulated clock rate. Changes how fast cycles run in real time, never the result."
+    >
       <span class="muted">Clock</span>
       <select v-model="speed" aria-label="Execution speed" data-testid="speed">
         <option v-for="sp in SPEEDS" :key="String(sp.value)" :value="String(sp.value)">{{ sp.label }}</option>
@@ -102,14 +106,25 @@ function runPause(): void {
     </label>
     <div class="group status">
       <span class="chip" :class="status.cls" data-testid="machine-status" role="status">{{ status.text }}</span>
-      <span v-if="loaded" class="chip" :class="supervisor ? 'warn' : 'ok'" :title="supervisor ? 'Supervisor mode (PSW.S = 1)' : 'User mode (PSW.S = 0)'">
+      <span
+        v-if="loaded"
+        class="chip"
+        :class="supervisor ? 'warn' : 'ok'"
+        :title="supervisor ? 'Supervisor mode (PSW.S = 1)' : 'User mode (PSW.S = 0)'"
+      >
         {{ supervisor ? 'SUPERVISOR' : 'USER' }}
       </span>
     </div>
     <div class="group counters mono" aria-live="off">
-      <span title="Program counter">PC <b data-testid="pc">{{ v ? hex4(v.cpu.pc) : '----' }}</b></span>
-      <span title="Simulated clock cycles since power-on">cycle <b data-testid="cycle">{{ v ? formatCycles(v.cycle) : 0 }}</b></span>
-      <span title="Instructions completed">instr <b>{{ v ? formatCycles(v.instructions) : 0 }}</b></span>
+      <span title="Program counter"
+        >PC <b data-testid="pc">{{ v ? hex4(v.cpu.pc) : '----' }}</b></span
+      >
+      <span title="Simulated clock cycles since power-on"
+        >cycle <b data-testid="cycle">{{ v ? formatCycles(v.cycle) : 0 }}</b></span
+      >
+      <span title="Instructions completed"
+        >instr <b>{{ v ? formatCycles(v.instructions) : 0 }}</b></span
+      >
       <span v-if="running && v" class="muted" title="Measured simulated clock rate">{{ formatHz(v.measuredHz) }}</span>
     </div>
     <div v-if="v?.stop?.detail && !running" class="stopdetail" data-testid="stop-detail">{{ v.stop.detail }}</div>
