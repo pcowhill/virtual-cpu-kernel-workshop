@@ -104,3 +104,29 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v5
+
+  pages-smoke:
+    name: Smoke-test the deployed site
+    needs: pages-deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Workbench and offline tests against GitHub Pages
+        run: npx playwright test -g "workbench loads|works offline|boot the operating system"
+        env:
+          E2E_BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: pages-smoke-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 14

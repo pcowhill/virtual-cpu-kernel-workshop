@@ -8,9 +8,12 @@ import archDoc from '../../../docs/spec/architecture.md?raw';
 import kernelDoc from '../../../docs/os/kernel.md?raw';
 import bootDoc from '../../../docs/os/boot-process.md?raw';
 import preemptDoc from '../../../docs/os/preemption-walkthrough.md?raw';
+import asmDoc from '../../../docs/spec/assembly-language.md?raw';
+import guideDoc from '../../../docs/guide/user-guide.md?raw';
+import limitsDoc from '../../../docs/limitations.md?raw';
 import syscallsInc from '../../guest/include/syscalls.inc?raw';
 
-const tab = ref<'isa' | 'arch' | 'kernel' | 'boot' | 'preempt' | 'abi'>('isa');
+const tab = ref<'isa' | 'asm' | 'arch' | 'kernel' | 'boot' | 'preempt' | 'abi' | 'guide' | 'limits'>('isa');
 const q = ref('');
 const selected = ref<InstructionDef | null>(INSTRUCTIONS[0] ?? null);
 
@@ -27,15 +30,26 @@ const rows = computed(() => {
   );
 });
 
-const DOCS: Record<string, string> = { arch: archDoc, kernel: kernelDoc, boot: bootDoc, preempt: preemptDoc };
+const DOCS: Record<string, string> = {
+  arch: archDoc,
+  asm: asmDoc,
+  kernel: kernelDoc,
+  boot: bootDoc,
+  preempt: preemptDoc,
+  guide: guideDoc,
+  limits: limitsDoc,
+};
 const html = computed(() => (DOCS[tab.value] ? renderMarkdown(DOCS[tab.value]!) : ''));
 const TABS = [
+  { id: 'guide', label: 'User guide' },
   { id: 'isa', label: 'Instruction set' },
+  { id: 'asm', label: 'Assembly language' },
   { id: 'arch', label: 'Architecture spec' },
   { id: 'abi', label: 'System calls' },
   { id: 'kernel', label: 'Kernel' },
   { id: 'boot', label: 'Boot walkthrough' },
   { id: 'preempt', label: 'Preemption walkthrough' },
+  { id: 'limits', label: 'Simplifications & limitations' },
 ] as const;
 </script>
 

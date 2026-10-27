@@ -3,7 +3,7 @@
  * been observed passing. Checks are re-evaluated on every machine view; a step
  * counts as done once its check has held while the step was current.
  */
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, effectScope, reactive, ref, watch, type EffectScope } from 'vue';
 import { useStore } from './store';
 import { GUEST_SOURCES } from '../guest';
 import { LESSONS } from '../lessons/lessons';
@@ -203,13 +203,19 @@ function createLessons() {
 }
 
 let lessons: ReturnType<typeof createLessons> | null = null;
+let scope: EffectScope | null = null;
 
 export function useLessons(): ReturnType<typeof createLessons> {
-  if (!lessons) lessons = createLessons();
+  if (!lessons) {
+    scope = effectScope(true);
+    lessons = scope.run(createLessons)!;
+  }
   return lessons;
 }
 
-/** For tests. */
+/** For tests: discard the session and stop its watchers. */
 export function resetLessons(): void {
+  scope?.stop();
+  scope = null;
   lessons = null;
 }

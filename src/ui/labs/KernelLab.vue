@@ -11,6 +11,18 @@ const s = useStore();
 const v = computed(() => s.view.value);
 const filter = ref<'all' | 'syscall' | 'irq' | 'fault'>('all');
 
+const modeSplit = computed(() => {
+  const mc = v.value?.modeCycles ?? { user: 0, supervisor: 0, idle: 0 };
+  const total = mc.user + mc.supervisor + mc.idle || 1;
+  return (
+    [
+      ['user', 'User programs', mc.user],
+      ['supervisor', 'Supervisor (kernel, firmware)', mc.supervisor],
+      ['idle', 'Idle (HLT)', mc.idle],
+    ] as const
+  ).map(([key, label, cycles]) => ({ key, label, cycles, pct: (100 * cycles) / total }));
+});
+
 const vectors = computed(() => {
   const view = v.value;
   if (!view) return [];
@@ -136,6 +148,20 @@ const ie = computed(() => ((v.value?.cpu.psw ?? 0) & PSW.I) !== 0);
             </p>
           </div>
         </section>
+        <section class="panel" aria-label="Time by privilege mode">
+          <header>Where the cycles went</header>
+          <div class="body" data-testid="mode-split">
+            <div v-for="m in modeSplit" :key="m.key" class="moderow">
+              <span class="mlabel">{{ m.label }}</span>
+              <span class="mbar"><span class="mfill" :class="m.key" :style="{ width: `${m.pct}%` }" /></span>
+              <span class="mono small">{{ m.cycles.toLocaleString('en-US') }} ({{ m.pct.toFixed(1) }}%)</span>
+            </div>
+            <p class="faint small">
+              Counted by the machine for every clock cycle: user mode (S = 0), supervisor mode, and idle (HLT, waiting
+              for an interrupt).
+            </p>
+          </div>
+        </section>
         <section class="panel">
           <header>Kernel's latest trap frame (kframe)</header>
           <div class="body mono small">
@@ -208,5 +234,31 @@ const ie = computed(() => ((v.value?.cpu.psw ?? 0) & PSW.I) !== 0);
 }
 .e-rti td {
   color: var(--muted);
+}
+.moderow {
+  display: grid;
+  grid-template-columns: 11rem 1fr 9rem;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.2rem 0;
+}
+.mbar {
+  height: 0.7rem;
+  background: var(--panel-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.mfill {
+  display: block;
+  height: 100%;
+}
+.mfill.user {
+  background: var(--user-strong);
+}
+.mfill.supervisor {
+  background: var(--kernel-strong);
+}
+.mfill.idle {
+  background: var(--border-strong);
 }
 </style>

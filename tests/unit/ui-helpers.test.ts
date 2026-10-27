@@ -4,6 +4,13 @@ import { highlightLine } from '../../src/ui/highlight';
 import { parseAddress, parseValue, flagsString, signed8 } from '../../src/ui/format';
 
 describe('markdown renderer', () => {
+  it('renders <kbd> keys but no other HTML', () => {
+    expect(renderMarkdown('Press <kbd>F10</kbd>.')).toContain('<kbd class="kbd">F10</kbd>');
+    const evil = renderMarkdown('<kbd><img src=x onerror=alert(1)></kbd> <script>x</script>');
+    expect(evil).not.toContain('<img');
+    expect(evil).not.toContain('<script');
+  });
+
   it('renders headings, lists, tables, code and inline formatting', () => {
     const html = renderMarkdown(
       '# Title\n\nSome **bold** and `code` and _it_.\n\n- a\n- b\n\n| x | y |\n| --- | --- |\n| 1 | a\\|b |\n\n```\nMOV R0, #1\n```',

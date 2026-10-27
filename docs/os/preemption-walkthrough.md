@@ -55,7 +55,7 @@ In the build used here the kernel part (steps 3–8) takes about 1 100–1 600 c
 and the next process then runs for a full quantum (up to about 1 750 cycles of
 user code before the next tick, after the restart and the return path).
 
-## What to observe in the workbench (milestone 3)
+## What to observe in the workbench
 
 - **Processes & Scheduling lab:** the timeline alternates between pid 1 and pid 2
   with a timer marker at every switch; selecting a marker shows the interrupted
@@ -66,6 +66,8 @@ user code before the next tick, after the restart and the return path).
   executes a system call until it finishes.
 - **Datapath lab:** micro-step through an exception entry to see the three
   frame bytes written by the hardware.
+- **Guided lesson 17** (_Timer-driven preemptive multitasking_) runs this setup
+  and has you shorten the quantum; lesson 16 follows the saved contexts.
 
 ## Things to try
 

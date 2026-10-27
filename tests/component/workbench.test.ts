@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import { resetStore, useStore } from '../../src/app/store';
+import { resetLessons } from '../../src/app/lessons';
+import { resetWorkspaces } from '../../src/app/workspaces';
 import type { MachineView } from '../../src/host/protocol';
 import App from '../../src/App.vue';
 import ControlBar from '../../src/ui/components/ControlBar.vue';
@@ -56,6 +58,8 @@ function mountC(c: Parameters<typeof mount>[0]): VueWrapper {
 beforeEach(() => {
   vi.stubGlobal('Worker', undefined);
   resetStore();
+  resetLessons();
+  resetWorkspaces();
 });
 afterEach(() => {
   while (mounted.length) mounted.pop()!.unmount();
