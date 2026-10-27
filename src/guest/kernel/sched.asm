@@ -67,7 +67,11 @@ idle:
         MOV R0, #0xFF
         ST [current], R0                ; no process is running
         MOVP SP, #KSTACK_IDLE           ; every process's frame is safe in its PCB
-        HLT                             ; sleep until an enabled IRQ line is pending
+        CALL any_sleeping
+        CMP R0, #0
+        JNE .wait                       ; sleepers need timer ticks
+        ST [TIMER_CTRL], R0             ; tickless idle: stop the timer (dispatch restarts it)
+.wait:  HLT                             ; sleep until an enabled IRQ line is pending
         LDW P0, [idle_wakeups]
         INCP P0
         STW [idle_wakeups], P0
@@ -82,6 +86,25 @@ idle:
         JEQ .nokbd
         CALL kbd_service
 .nokbd: JMP schedule
+
+; any_sleeping: R0 = 1 if some process is blocked in sleep, else 0.
+; Changes R0, R1, R2, P3.
+any_sleeping:
+        MOV R2, #MAX_PROCS
+        MOVP P3, #proc_table
+.loop:  LD R1, [P3+PCB_STATE]
+        CMP R1, #ST_BLOCKED
+        JNE .next
+        LD R1, [P3+PCB_WAIT]
+        CMP R1, #W_SLEEP
+        JEQ .yes
+.next:  ADDP P3, #PCB_SIZE
+        DEC R2
+        JNE .loop
+        MOV R0, #0
+        RET
+.yes:   MOV R0, #1
+        RET
 
 ; count_alive: R0 = number of processes that are READY, RUNNING or BLOCKED.
 ; Changes R0, R1, R2, P3.

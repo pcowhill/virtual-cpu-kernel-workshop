@@ -16,10 +16,11 @@ start:  MOVP P1, #prompt
         CMP R0, #'z' + 1
         JCC .out                ; above 'z'
         SUB R0, #0x20           ; to upper case
-.out:   MOV R1, R0
+.out:   MOV R4, R0              ; keep the key in R4: system calls preserve R2-R7
+        MOV R1, R4              ; (R1 comes back holding the error code)
         MOV R0, #SYS_PUTC
         SYS
-        CMP R1, #13             ; Enter: start a new line
+        CMP R4, #13             ; Enter: start a new line
         JNE .key
         MOV R1, #10
         MOV R0, #SYS_PUTC

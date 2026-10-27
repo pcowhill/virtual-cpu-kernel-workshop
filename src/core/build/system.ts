@@ -159,7 +159,8 @@ export function buildSystem(files: Record<string, string>, config: SystemConfig)
 
   if (kernel.ok && kernel.segments.length) {
     const lowest = Math.min(...kernel.segments.map((s) => s.address));
-    if (lowest !== KERNEL_LOAD) fail('kernel', config.kernel, `kernel must start at 0x2000 (starts at 0x${lowest.toString(16)})`);
+    if (lowest !== KERNEL_LOAD)
+      fail('kernel', config.kernel, `kernel must start at 0x2000 (starts at 0x${lowest.toString(16)})`);
     const img = flatten(kernel.segments, KERNEL_LOAD);
     const where = place(img, 'kernel');
     if (where) {

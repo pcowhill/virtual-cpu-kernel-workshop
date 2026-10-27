@@ -155,7 +155,6 @@ sys_setled:
 
 ; ---- 8: readblk(R1 = block, P1 = 256-byte buffer) ----------------------------
 sys_readblk:
-        LD R4, [P2+FR_R1]               ; R4 = block number
         LDW P1, [P2+FR_P1]              ; P1 = user buffer
         LDW P0, [P3+PCB_BASE]
         CMPP P1, P0
@@ -166,8 +165,9 @@ sys_readblk:
         LDW P2, [P3+PCB_LIMIT]
         CMPP P0, P2
         JGTU .fault                     ; buffer ends beyond the window
+        LDW P2, [kframe]
         MOV R0, #0
-        MOV R1, R4                      ; P0 = block
+        LD R1, [P2+FR_R1]               ; P0 = block number
         CALL disk_read                  ; copies into the user's buffer
         CMP R0, #0
         JNE .io

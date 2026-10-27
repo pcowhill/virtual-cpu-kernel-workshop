@@ -6,3 +6,4 @@ test-results
 package-lock.json
 *.asm
 docs/spec/isa-reference.md
+*.inc
