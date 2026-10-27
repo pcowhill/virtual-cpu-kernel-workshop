@@ -1,8 +1,9 @@
 /**
  * Minimal Markdown → HTML renderer for the bundled documentation and lessons.
  * Supports headings, paragraphs, ordered/unordered lists, fenced code, tables,
- * blockquotes, inline code, bold, italic and links. All text is HTML-escaped;
- * raw HTML in the source is not interpreted.
+ * blockquotes, inline code, bold, italic, links and <kbd>key</kbd>. All text is
+ * HTML-escaped; apart from re-creating <kbd> around already-escaped text, raw
+ * HTML in the source is not interpreted.
  */
 
 function esc(s: string): string {
@@ -16,8 +17,10 @@ function inline(text: string): string {
     return `\u0000${codes.length - 1}\u0000`;
   });
   t = esc(t);
+  t = t.replace(/&lt;kbd&gt;(.{1,30}?)&lt;\/kbd&gt;/g, '<kbd class="kbd">$1</kbd>');
   t = t.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, label: string, href: string) => {
-    const safe = /^(https?:|#|\.{0,2}\/|[\w-]+\.md)/.test(href) ? href : '#';
+    // Allowed: http(s) links, in-page anchors, and relative links to Markdown documents.
+    const safe = /^(https?:\/\/|#[\w-]*$|(\.\.?\/)*[\w-]+(\/[\w-]+)*\.md(#[\w-]*)?$)/.test(href) ? href : '#';
     const external = /^https?:/.test(safe);
     return `<a href="${safe}"${external ? ' target="_blank" rel="noopener"' : ''} data-href="${safe}">${label}</a>`;
   });

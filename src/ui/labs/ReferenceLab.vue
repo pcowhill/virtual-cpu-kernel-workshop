@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { INSTRUCTIONS, type InstructionDef } from '../../core/isa/opcodes';
 import { syntaxSummary } from '../../core/asm/assembler';
 import { addressingMode, cycleCount, encodingLayout, microOpNames } from '../../core/isa/reference';
@@ -8,9 +8,12 @@ import archDoc from '../../../docs/spec/architecture.md?raw';
 import kernelDoc from '../../../docs/os/kernel.md?raw';
 import bootDoc from '../../../docs/os/boot-process.md?raw';
 import preemptDoc from '../../../docs/os/preemption-walkthrough.md?raw';
+import asmDoc from '../../../docs/spec/assembly-language.md?raw';
+import guideDoc from '../../../docs/guide/user-guide.md?raw';
+import limitsDoc from '../../../docs/limitations.md?raw';
 import syscallsInc from '../../guest/include/syscalls.inc?raw';
 
-const tab = ref<'isa' | 'arch' | 'kernel' | 'boot' | 'preempt' | 'abi'>('isa');
+const tab = ref<'isa' | 'asm' | 'arch' | 'kernel' | 'boot' | 'preempt' | 'abi' | 'guide' | 'limits'>('isa');
 const q = ref('');
 const selected = ref<InstructionDef | null>(INSTRUCTIONS[0] ?? null);
 
@@ -27,15 +30,60 @@ const rows = computed(() => {
   );
 });
 
-const DOCS: Record<string, string> = { arch: archDoc, kernel: kernelDoc, boot: bootDoc, preempt: preemptDoc };
+const DOCS: Record<string, string> = {
+  arch: archDoc,
+  asm: asmDoc,
+  kernel: kernelDoc,
+  boot: bootDoc,
+  preempt: preemptDoc,
+  guide: guideDoc,
+  limits: limitsDoc,
+};
+/** Bundled documents by file name, so links between them switch tabs instead of leaving the app. */
+const DOC_FILES: Record<string, (typeof TABS)[number]['id']> = {
+  'architecture.md': 'arch',
+  'isa-reference.md': 'isa',
+  'assembly-language.md': 'asm',
+  'kernel.md': 'kernel',
+  'boot-process.md': 'boot',
+  'preemption-walkthrough.md': 'preempt',
+  'user-guide.md': 'guide',
+  'limitations.md': 'limits',
+};
+const REPO_DOCS = 'https://github.com/pcowhill/virtual-cpu-kernel-workshop/blob/main/docs/';
+
+function onDocClick(e: MouseEvent): void {
+  const a = (e.target as HTMLElement).closest('a');
+  const href = a?.getAttribute('data-href');
+  if (!a || !href || /^https?:/.test(href)) return; // external links open in a new tab
+  e.preventDefault();
+  if (href.startsWith('#')) {
+    document.getElementById(href.slice(1))?.scrollIntoView();
+    return;
+  }
+  const [path, anchor] = href.split('#');
+  const target = DOC_FILES[path!.split('/').pop()!];
+  if (target) {
+    tab.value = target;
+    if (anchor) void nextTick(() => document.getElementById(anchor)?.scrollIntoView());
+    return;
+  }
+  // Documents not bundled in the app (developer docs) are read on GitHub.
+  const repoPath = href.replace(/^(\.\.?\/)+/, '').replace(/^docs\//, '');
+  window.open(REPO_DOCS + repoPath, '_blank', 'noopener');
+}
+
 const html = computed(() => (DOCS[tab.value] ? renderMarkdown(DOCS[tab.value]!) : ''));
 const TABS = [
+  { id: 'guide', label: 'User guide' },
   { id: 'isa', label: 'Instruction set' },
+  { id: 'asm', label: 'Assembly language' },
   { id: 'arch', label: 'Architecture spec' },
   { id: 'abi', label: 'System calls' },
   { id: 'kernel', label: 'Kernel' },
   { id: 'boot', label: 'Boot walkthrough' },
   { id: 'preempt', label: 'Preemption walkthrough' },
+  { id: 'limits', label: 'Simplifications & limitations' },
 ] as const;
 </script>
 
@@ -166,7 +214,7 @@ const TABS = [
       </div>
     </section>
     <section v-else class="panel">
-      <div class="body prose doc" v-html="html"></div>
+      <div class="body prose doc" @click="onDocClick" v-html="html"></div>
     </section>
   </div>
 </template>

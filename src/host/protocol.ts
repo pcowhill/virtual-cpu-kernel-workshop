@@ -50,6 +50,8 @@ export type Request =
   | { type: 'getTrace' }
   | { type: 'getEvents' }
   | { type: 'getDisk' }
+  /** No-op round trip: resolves after every earlier command's view has been delivered. */
+  | { type: 'sync' }
   /**
    * Run `cycles` cycles synchronously. With `ignoreDebugStops`, breakpoints,
    * watchpoints and break-on-exception settings are suspended for this run

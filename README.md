@@ -1,56 +1,102 @@
 # Virtual CPU & Kernel Workshop
 
 An educational virtual computer that runs entirely in your browser. You can program it, step through it,
-debug it and modify it — from individual CPU micro-operations up to a preemptive multitasking kernel.
+debug it and modify it, from individual CPU micro-operations up to a preemptive multitasking kernel.
+
+**Live: <https://pcowhill.github.io/virtual-cpu-kernel-workshop/>** (works offline after the first visit)
 
 > **VC-8 is a custom, educational 8-bit instruction-set architecture.** It is not compatible with any real
 > processor. Everything it does is defined by the specification in [`docs/spec`](docs/spec).
 
-## Status
+## What is inside
 
-Delivered milestone by milestone through pull requests. Live site:
-<https://pcowhill.github.io/virtual-cpu-kernel-workshop/>
+- **A CPU you can watch think.** VC-8 has 8-bit data, 16-bit addresses and 80 instructions. Every instruction
+  executes as a micro-program, one micro-operation per clock cycle, with supervisor/user modes, base/limit memory
+  protection, precise exceptions and vectored interrupts.
+- **Devices on a memory-mapped bus:** a terminal, a keyboard, a timer, LEDs and switches, block storage, and an
+  interrupt controller.
+- **Real system software, written in VC-8 assembly and executed by the virtual CPU:**
+  - a boot ROM that loads the kernel from storage
+  - a kernel with system calls, drivers, process control blocks, blocking I/O, sleeping, and timer-driven
+    round-robin preemption
+  - user programs
+- **A workbench:**
+  - an assembler and disassembler with diagnostics, listings and source maps
+  - a debugger with breakpoints, watchpoints, a trace, micro-stepping and speed control; the machine runs in a
+    Web Worker
+  - visualizations of the datapath, the memory map, devices, processes and the scheduling timeline
+- **18 guided lessons** whose steps are checked against the running machine, and **23 examples** with
+  automated checks.
+- **Workspaces** in IndexedDB: snapshots of the complete machine state, and versioned, validated import/export.
 
-| Milestone                                    | Contents                                                                                                       | State       |
-| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------- |
-| 1 — Architecture and foundation              | Specification, ISA table, micro-op CPU core, protection, exceptions, interrupts, devices, assembler, CI        | merged      |
-| 2 — Firmware, kernel, multitasking           | Boot ROM, kernel, system calls, drivers, round-robin preemptive scheduler, integration tests                   | merged      |
-| 3 — Workbench                                | Worker-hosted machine, debugger, datapath/memory/timeline/device views, editor, example catalog, e2e workflows | in review   |
-| 4 — Lessons, workspaces, offline, deployment | Guided lessons, IndexedDB workspaces, PWA offline support, remaining documentation                             | in progress |
+## Quick start
 
-## The workbench
+Open the live site and press **Quick start** to step through a first program with <kbd>F10</kbd>, or **Boot the
+operating system** to watch the firmware load the kernel and the kernel schedule four programs. The
+[user guide](docs/guide/user-guide.md) explains every lab and control.
 
-The app has one simulated machine, owned by a Web Worker (or by the main thread when workers are unavailable).
-The interface only sends commands — run, pause, step one instruction, step one clock cycle, load, poke — and
-renders the snapshots the machine publishes. Labs:
-
-- **CPU & registers**, **Datapath & micro-ops** — step instructions (<kbd>F10</kbd>) or single clock cycles
-  (<kbd>Shift</kbd>+<kbd>F10</kbd>); the datapath highlights only the units the last micro-operation used.
-- **Memory & stack** — hex view of the whole address space, region map, protection window, watchpoints.
-- **Devices** — terminal, keyboard, timer, LEDs/switches, block storage, interrupt controller.
-- **Assembly editor** — every source file (examples, firmware, kernel, programs); diagnostics; listing and
-  line ↔ byte mapping; gutter breakpoints. Building is explicit (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>).
-- **Boot & firmware**, **Kernel & interrupts**, **Processes & scheduling** — OS-aware views decoded from kernel
-  memory: boot stages, interrupt and syscall log, process table, scheduling timeline.
-- **Trace & breakpoints** — bounded instruction trace, breakpoints, break-on-exception settings.
-- **Examples** — 23 catalog programs, each with automated checks run on the emulator.
-- **Reference** — instruction set (with micro-programs), specification, kernel and walkthrough documents.
+| Key                                              | Action                                 |
+| ------------------------------------------------ | -------------------------------------- |
+| <kbd>F5</kbd> / <kbd>Shift</kbd>+<kbd>F5</kbd>   | Run or pause / stop                    |
+| <kbd>F10</kbd> / <kbd>Shift</kbd>+<kbd>F10</kbd> | Step one instruction / one clock cycle |
+| <kbd>Ctrl</kbd>+<kbd>Enter</kbd>                 | Build & load                           |
 
 ## Development
 
+Requires Node.js 20 or newer.
+
 ```sh
 npm ci
-npm run dev          # local development server
-npm test             # all Vitest projects (unit, integration, component)
-npm run test:e2e     # Playwright end-to-end tests (after `npm run build`)
-npm run validate     # lint, format check, typecheck, tests, build
-npm run docs:isa     # regenerate docs/spec/isa-reference.md from the opcode table
+npm run dev           # development server
+npm test              # Vitest: unit, integration and component tests
+npm run build         # production build in dist/
+npm run test:e2e      # Playwright end-to-end tests (after npm run build)
+npm run validate      # lint, format check, typecheck, all Vitest tests, build
+npm run docs:isa      # regenerate docs/spec/isa-reference.md from the opcode table
 ```
+
+See [testing](docs/dev/testing.md) and [deployment](docs/dev/deployment.md).
+
+## Code map
+
+| Path                                   | Contents                                                                               |
+| -------------------------------------- | -------------------------------------------------------------------------------------- |
+| `src/core/isa`                         | Machine-readable instruction table, constants, reference generator                     |
+| `src/core/cpu`                         | Registers, ALU, micro-programs, micro-operation execution                              |
+| `src/core/devices`, `src/core/machine` | Devices, bus, machine (stepping, breakpoints, trace, snapshots)                        |
+| `src/core/asm`, `src/core/build`       | Assembler, disassembler, ROM/disk image builders                                       |
+| `src/core/os`                          | Reading kernel data structures for OS-aware views (read-only)                          |
+| `src/guest`                            | All VC-8 sources: `firmware/`, `kernel/`, `programs/`, `examples/`, `lib/`, `include/` |
+| `src/host`                             | Machine controller, host loop, Web Worker, client with an in-page fallback             |
+| `src/app`                              | Workbench state, project builds, lessons session, workspaces                           |
+| `src/catalog`, `src/lessons`           | Example catalog with checks; lesson engine and the 18 lessons                          |
+| `src/ui`                               | Labs and components                                                                    |
+| `scripts/service-worker.ts`            | Build plugin that generates the offline service worker                                 |
+| `tests/`                               | `unit`, `integration`, `component`, `e2e`                                              |
 
 ## Documentation
 
-- [Architecture specification](docs/spec/architecture.md) — registers, memory map, protection, exceptions, devices
-- [Instruction set reference](docs/spec/isa-reference.md) — generated from `src/core/isa/opcodes.ts`
-- [Boot process walkthrough](docs/os/boot-process.md) — from reset to the first user program
-- [Kernel](docs/os/kernel.md) — traps, system calls, drivers, process control blocks, scheduling
-- [Preemption walkthrough](docs/os/preemption-walkthrough.md) — a timer interrupt switching processes
+- [User guide](docs/guide/user-guide.md): quick start, controls, labs, lessons, workspaces, offline use
+- [Architecture specification](docs/spec/architecture.md): registers, memory map, protection, exceptions,
+  devices, power and reset
+- [Instruction set reference](docs/spec/isa-reference.md): generated from `src/core/isa/opcodes.ts`
+- [Assembly language](docs/spec/assembly-language.md): syntax, expressions, directives, images
+- [Boot walkthrough](docs/os/boot-process.md): from reset to the first user program
+- [Kernel](docs/os/kernel.md): privilege model, traps, system-call ABI, drivers, process control blocks,
+  scheduling
+- [Preemption walkthrough](docs/os/preemption-walkthrough.md): a timer interrupt switching processes
+- [Workspace format](docs/dev/workspace-format.md), [testing](docs/dev/testing.md),
+  [deployment](docs/dev/deployment.md)
+- [Authenticity, simplifications and known limitations](docs/limitations.md)
+
+## How it was built
+
+The project was delivered in four milestones, each a reviewed pull request with green CI:
+
+1. architecture and CPU core
+2. firmware, kernel and multitasking
+3. the workbench
+4. lessons, workspaces, offline support and documentation
+
+Each pull request was reviewed by a separate agent with no authoring context. These reviews are disclosed in
+the pull requests: they are not human code reviews.

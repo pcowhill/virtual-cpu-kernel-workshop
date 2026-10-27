@@ -4,6 +4,23 @@ import { highlightLine } from '../../src/ui/highlight';
 import { parseAddress, parseValue, flagsString, signed8 } from '../../src/ui/format';
 
 describe('markdown renderer', () => {
+  it('allows only web, anchor and relative Markdown links', () => {
+    const href = (md: string) => /data-href="([^"]*)"/.exec(renderMarkdown(md))![1];
+    expect(href('[a](spec/architecture.md)')).toBe('spec/architecture.md');
+    expect(href('[a](../dev/testing.md#layers)')).toBe('../dev/testing.md#layers');
+    expect(href('[a](#quick-start)')).toBe('#quick-start');
+    expect(href('[a](https://example.org/x)')).toBe('https://example.org/x');
+    expect(href('[a](javascript:alert(1))')).toBe('#');
+    expect(href('[a](data:text/html,x)')).toBe('#');
+    expect(href('[a](/etc/passwd)')).toBe('#');
+  });
+  it('renders <kbd> keys but no other HTML', () => {
+    expect(renderMarkdown('Press <kbd>F10</kbd>.')).toContain('<kbd class="kbd">F10</kbd>');
+    const evil = renderMarkdown('<kbd><img src=x onerror=alert(1)></kbd> <script>x</script>');
+    expect(evil).not.toContain('<img');
+    expect(evil).not.toContain('<script');
+  });
+
   it('renders headings, lists, tables, code and inline formatting', () => {
     const html = renderMarkdown(
       '# Title\n\nSome **bold** and `code` and _it_.\n\n- a\n- b\n\n| x | y |\n| --- | --- |\n| 1 | a\\|b |\n\n```\nMOV R0, #1\n```',
