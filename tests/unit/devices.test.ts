@@ -191,6 +191,15 @@ copy: LD R0, [0xF064]
     expect(m.cpu.r[0]).toBe(5 + 6); // reset (5 cycles) + the 6 cycles of LD before its MEM READ cycle
   });
 
+  it('debugger peeks of the cycle counter show the latched value, never a torn read', () => {
+    const { m } = bareMachine('LD R0, [0xF004]\nHLT');
+    m.run(1000);
+    const latched = [0xf004, 0xf005, 0xf006, 0xf007].map((a) => m.bus.peek(a));
+    m.run(500);
+    expect([0xf004, 0xf005, 0xf006, 0xf007].map((a) => m.bus.peek(a))).toEqual(latched);
+    expect(latched[0]).toBe(m.cpu.r[0]);
+  });
+
   it('powers off through the system control register', () => {
     const { m } = bareMachine(`
       MOV R0, #0xA5

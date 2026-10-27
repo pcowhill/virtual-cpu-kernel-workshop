@@ -378,6 +378,18 @@ function hex(v: number, w = 4): string {
   return '0x' + (v >>> 0).toString(16).toUpperCase().padStart(w, '0');
 }
 
+/**
+ * Resolve an include path: exactly as written, then relative to the including
+ * file's directory, then inside `include/`.
+ */
+export function resolveInclude(path: string, fromFile: string, files: Record<string, string>): string | null {
+  const dir = fromFile.includes('/') ? fromFile.slice(0, fromFile.lastIndexOf('/') + 1) : '';
+  for (const candidate of [path, dir + path, 'include/' + path]) {
+    if (Object.prototype.hasOwnProperty.call(files, candidate)) return candidate;
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Assembler
 // ---------------------------------------------------------------------------
@@ -433,13 +445,13 @@ export function assemble(source: string, options: AssembleOptions = {}): Assembl
           err(file, i + 1, '.include needs a quoted file name', st.opColumn);
           return;
         }
-        const body = options.files?.[path];
-        if (body === undefined) {
+        const resolved = resolveInclude(path, file, options.files ?? {});
+        if (resolved === null) {
           err(file, i + 1, `cannot find include file '${path}'`, st.opColumn);
           return;
         }
         if (st.labels.length) stmts.push({ ...st, op: null, operands: [] });
-        load(path, body);
+        load(resolved, options.files![resolved]!);
         return;
       }
       stmts.push(st);
