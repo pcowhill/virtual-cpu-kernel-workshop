@@ -19,7 +19,7 @@ watch(s.focusAddress, (a) => {
 });
 
 function lookup(name: string): number | undefined {
-  return s.build.value?.symbols.find((x) => x.name === name)?.value;
+  return s.symbol(name);
 }
 
 function jump(): void {
@@ -76,7 +76,7 @@ const selectedInfo = computed(() => {
   if (selected.value === null || !s.view.value) return null;
   const a = selected.value;
   const r = regionOf(a);
-  const sym = s.build.value?.symbols.find((x) => x.value === a && x.kind === 'label');
+  const sym = s.loadedBuild.value?.symbols.find((x) => x.value === a && x.kind === 'label');
   return { a, v: s.view.value.memory[a]!, region: REGION_INFO[r].name, sym: sym?.name };
 });
 </script>

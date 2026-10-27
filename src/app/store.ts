@@ -68,7 +68,10 @@ function createStore() {
   const prevView = shallowRef<MachineView | null>(null);
   const hostError = ref<string | null>(null);
   const project = reactive<Project>(defaultProject());
+  /** The most recent build (possibly only assembled, not loaded). */
   const build = shallowRef<BuildOutput | null>(null);
+  /** The build the machine is running: machine-facing views use its symbols and source map. */
+  const loadedBuild = shallowRef<BuildOutput | null>(null);
   const loadedHash = ref<string | null>(null);
   const debug = reactive<DebugSettings>(defaultDebugSettings());
   const lab = ref<LabId>('start');
@@ -81,7 +84,11 @@ function createStore() {
   const notice = ref<{ kind: 'info' | 'error' | 'success'; text: string } | null>(null);
 
   client.onView((v) => {
-    prevView.value = view.value;
+    // Change highlighting compares against the previous *machine state*: views
+    // published for debugger-setting commands (same cycle) must not erase it.
+    const cur = view.value;
+    if (!cur || cur.cycle !== v.cycle || cur.label !== v.label || cur.instructions !== v.instructions)
+      prevView.value = cur;
     view.value = v;
   });
   client.onError((m) => {
@@ -137,6 +144,7 @@ function createStore() {
     send({ type: 'load', request: out.load });
     syncDebug();
     loadedHash.value = out.sourceHash;
+    loadedBuild.value = out;
     notify('success', `Built and loaded ${out.load.label}. The machine was powered on with the new images.`);
     return true;
   }
@@ -149,26 +157,14 @@ function createStore() {
     send({ type: 'restore', snapshot: s });
   }
 
-  /** Run until `addr` is about to execute, using a temporary breakpoint. */
-  let tempBreakpoint: number | null = null;
+  /** Run until `addr` is about to execute (a one-shot breakpoint kept by the machine host). */
   function runTo(addr: number): void {
-    if (!debug.breakpoints.includes(addr)) {
-      debug.breakpoints.push(addr);
-      tempBreakpoint = addr;
-    }
-    syncDebug();
-    send({ type: 'run' });
+    send({ type: 'run', until: addr });
   }
-  watch(view, (v) => {
-    if (tempBreakpoint !== null && v && v.runState === 'paused' && v.stop) {
-      const i = debug.breakpoints.indexOf(tempBreakpoint);
-      if (i >= 0) debug.breakpoints.splice(i, 1);
-      tempBreakpoint = null;
-    }
-  });
 
+  /** Symbol of the loaded machine's build. */
   function symbol(name: string): number | undefined {
-    return build.value?.symbols.find((x) => x.name === name)?.value;
+    return loadedBuild.value?.symbols.find((x) => x.name === name)?.value;
   }
 
   function toggleBreakpoint(addr: number): void {
@@ -184,6 +180,7 @@ function createStore() {
     hostError,
     project,
     build,
+    loadedBuild,
     loadedHash,
     debug,
     lab,

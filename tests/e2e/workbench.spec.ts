@@ -116,6 +116,32 @@ test('boot the operating system and observe preemptive process switching', async
   await expect(page.getByTestId('machine-status')).not.toContainText('Running');
 });
 
+test('run to kernel entry works after an earlier breakpoint stop (one-shot breakpoint in the worker)', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await page.getByTestId('nav-editor').click();
+  await page.getByTestId('mode').selectOption('os');
+  await page.getByTestId('build-load').click();
+  await expect(page.getByTestId('machine-label')).toContainText(/OS|operating/i);
+
+  await page.getByTestId('nav-trace').click();
+  await page.getByTestId('bp-input').fill('fw_disk_read');
+  await page.getByTestId('bp-add').click();
+  await page.getByTestId('run-pause').click();
+  await expect(page.getByTestId('machine-status')).toHaveText('Paused at breakpoint');
+  await page.getByRole('button', { name: 'Clear all' }).click();
+
+  await page.getByTestId('nav-boot').click();
+  await page.getByTestId('run-to-kernel').click();
+  await expect(page.getByTestId('stop-detail')).toContainText('ran to', { timeout: 20_000 });
+  await expect(page.getByTestId('stage-jump')).toHaveClass(/done/);
+  // The temporary breakpoint is gone: running again boots into user programs.
+  await page.getByTestId('run-pause').click();
+  await expect(page.getByTestId('stage-user')).toHaveClass(/done/, { timeout: 20_000 });
+  await page.getByTestId('run-pause').click();
+});
+
 test('the reference lab and the example catalog run checks on the real machine', async ({ page }) => {
   await page.goto('./');
   await page.getByTestId('nav-reference').click();
@@ -127,4 +153,8 @@ test('the reference lab and the example catalog run checks on the real machine',
   await page.getByTestId('check-register-arithmetic').click();
   await expect(page.getByTestId('result-register-arithmetic')).toContainText(/pass/i, { timeout: 30_000 });
   await expect(page.getByTestId('result-register-arithmetic')).not.toContainText(/fail/i);
+  // A fault example passes with the default "break on faults" setting: checks ignore debug stops.
+  await page.getByTestId('check-protection-fault').click();
+  await expect(page.getByTestId('result-protection-fault')).toContainText(/pass/i, { timeout: 30_000 });
+  await expect(page.getByTestId('result-protection-fault')).not.toContainText(/fail/i);
 });

@@ -10,16 +10,27 @@ export interface MachineHost {
   readonly kind: 'worker' | 'inline';
   post(msg: ToHost): void;
   onMessage(cb: (msg: FromHost) => void): void;
+  /** The host itself failed (not the guest machine): e.g. the worker script could not load. */
+  onFailure(cb: (message: string) => void): void;
   dispose(): void;
 }
 
 export function createWorkerHost(): MachineHost {
   const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
+  let failure: (message: string) => void = () => {};
+  worker.onerror = (e) => {
+    e.preventDefault();
+    failure(e.message || 'the machine worker failed to start');
+  };
+  worker.onmessageerror = () => failure('a message from the machine worker could not be decoded');
   return {
     kind: 'worker',
     post: (msg) => worker.postMessage(msg),
     onMessage: (cb) => {
       worker.onmessage = (e: MessageEvent<FromHost>) => cb(e.data);
+    },
+    onFailure: (cb) => {
+      failure = cb;
     },
     dispose: () => worker.terminate(),
   };
@@ -34,6 +45,7 @@ export function createInlineHost(): MachineHost {
     onMessage: (cb) => {
       listener = cb;
     },
+    onFailure: () => {},
     dispose: () => loop.dispose(),
   };
 }
@@ -44,8 +56,46 @@ export class MachineClient {
   private viewListeners: ((v: MachineView) => void)[] = [];
   private errorListeners: ((message: string) => void)[] = [];
 
-  constructor(private readonly host: MachineHost) {
-    host.onMessage((msg) => this.dispatch(msg));
+  private host: MachineHost;
+  /** Messages posted before the host first answered: replayed if it must be replaced. */
+  private unconfirmed: ToHost[] | null = [];
+
+  constructor(host: MachineHost) {
+    this.host = host;
+    this.attach(host);
+  }
+
+  private attach(host: MachineHost): void {
+    host.onMessage((msg) => {
+      this.unconfirmed = null;
+      this.dispatch(msg);
+    });
+    host.onFailure((message) => this.hostFailed(message));
+  }
+
+  /**
+   * A worker that fails before it ever answered is replaced by the in-page
+   * host (same HostLoop), and everything sent so far is replayed. A failure
+   * after that is reported: it is an application error, not a guest fault.
+   */
+  private hostFailed(message: string): void {
+    if (this.host.kind === 'worker' && this.unconfirmed) {
+      const replay = this.unconfirmed;
+      this.host.dispose();
+      this.host = createInlineHost();
+      this.attach(this.host);
+      for (const m of replay) this.host.post(m);
+      return;
+    }
+    const err = `Machine host error (workbench, not the guest program): ${message}`;
+    this.errorListeners.forEach((l) => l(err));
+    for (const p of this.pending.values()) p.reject(new Error(err));
+    this.pending.clear();
+  }
+
+  private post(msg: ToHost): void {
+    this.unconfirmed?.push(msg);
+    this.host.post(msg);
   }
 
   static create(): MachineClient {
@@ -83,18 +133,20 @@ export class MachineClient {
   }
 
   send(command: Command): void {
-    this.host.post({ kind: 'command', command });
+    this.post({ kind: 'command', command });
   }
 
   request<T>(request: Request): Promise<T> {
     const id = this.nextId++;
     return new Promise<T>((resolve, reject) => {
       this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject });
-      this.host.post({ kind: 'request', id, request });
+      this.post({ kind: 'request', id, request });
     });
   }
 
   dispose(): void {
     this.host.dispose();
+    for (const p of this.pending.values()) p.reject(new Error('machine host disposed'));
+    this.pending.clear();
   }
 }

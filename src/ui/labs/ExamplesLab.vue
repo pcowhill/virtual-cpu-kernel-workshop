@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useStore } from '../../app/store';
-import { EXAMPLES, evaluateCheck, type CheckResult, type Example } from '../../catalog/examples';
+import { checkStateFromView, EXAMPLES, evaluateCheck, type CheckResult, type Example } from '../../catalog/examples';
 import type { RunResult } from '../../core/machine/machine';
 
 const s = useStore();
@@ -31,16 +31,10 @@ async function runCheck(e: Example): Promise<void> {
   if (!load(e, false)) return;
   results.value[e.id] = 'running';
   if (e.check.keys) s.send({ type: 'injectKeys', bytes: [...e.check.keys].map((c) => c.charCodeAt(0)) });
-  await s.client.request<RunResult>({ type: 'runDeterministic', cycles: e.check.cycles });
-  const v = s.view.value!;
-  const terminal = [...v.devices.terminal.lines, v.devices.terminal.current].join('\n');
-  results.value[e.id] = evaluateCheck(e.check, {
-    terminal,
-    r: v.cpu.r,
-    peek: (a) => v.memory[a]!,
-    leds: v.devices.gpio.leds,
-    processes: v.os?.processes ?? null,
-  });
+  // The check runs its whole budget: the user's breakpoints, watchpoints and
+  // break-on-exception settings are suspended for this run.
+  await s.client.request<RunResult>({ type: 'runDeterministic', cycles: e.check.cycles, ignoreDebugStops: true });
+  results.value[e.id] = evaluateCheck(e.check, checkStateFromView(s.view.value!));
 }
 
 function result(e: Example): CheckResult | 'running' | undefined {

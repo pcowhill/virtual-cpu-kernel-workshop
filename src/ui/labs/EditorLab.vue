@@ -57,14 +57,24 @@ const diagnostics = computed(() => {
   return m;
 });
 
+/**
+ * The build the machine runs, if the sources still match it. Breakpoints and
+ * the PC marker map lines to addresses through it; after an edit they are
+ * unavailable until the next Build & load.
+ */
+const machineBuild = computed(() => (s.buildStale.value ? null : s.loadedBuild.value));
+
 const lineToAddress = computed(() => {
   const m = new Map<number, number>();
-  for (const l of listing.value) if (l.bytes.length && l.address !== null && !m.has(l.line)) m.set(l.line, l.address);
+  for (const c of machineBuild.value?.components ?? [])
+    for (const l of c.result.listing)
+      if (l.file === s.selectedFile.value && l.bytes.length && l.address !== null && !m.has(l.line))
+        m.set(l.line, l.address);
   return m;
 });
 const codeLines = computed(() => {
   const set = new Set<number>();
-  for (const e of build.value?.sourceMap ?? [])
+  for (const e of machineBuild.value?.sourceMap ?? [])
     if (e.file === s.selectedFile.value && e.kind === 'instruction') set.add(e.line);
   return set;
 });
@@ -76,7 +86,7 @@ const bpLines = computed(() => {
 const pcLine = computed(() => {
   const v = s.view.value;
   if (!v) return null;
-  const e = sourceFor(build.value, v.cpu.pc);
+  const e = sourceFor(machineBuild.value, v.cpu.pc);
   return e && e.file === s.selectedFile.value ? e.line : null;
 });
 
@@ -235,6 +245,10 @@ const byteRows = computed(() => {
             >
               Run this file bare-metal
             </button>
+          </div>
+          <div v-if="s.buildStale.value" class="body stale small" role="note">
+            The sources differ from the loaded machine: breakpoints and the PC marker return after
+            <b>Build &amp; load</b>.
           </div>
           <CodeEditor
             v-model="text"
@@ -484,5 +498,9 @@ const byteRows = computed(() => {
   .inspector {
     grid-column: 1 / -1;
   }
+}
+.stale {
+  color: var(--warn, inherit);
+  border-bottom: 1px solid var(--border);
 }
 </style>

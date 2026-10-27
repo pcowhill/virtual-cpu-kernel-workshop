@@ -6,7 +6,10 @@ import { hex2, hex4, flagsString } from '../format';
 /**
  * Datapath diagram. Highlighted units and bus values come from the activity
  * record of the micro-operation that actually executed last (cpu.lastOp) —
- * never from a script.
+ * never from a script. Unit boxes light for the units that execution used;
+ * the buses light only for a recorded bus transfer. The internal wires are
+ * drawn as structure only: the core records which units took part, not the
+ * individual transfers between them, so no wire is ever highlighted.
  */
 const s = useStore();
 const cpu = computed(() => s.view.value?.cpu ?? null);
@@ -14,6 +17,8 @@ const active = computed(() => new Set(cpu.value?.lastOp?.units ?? []));
 const on = (u: string) => active.value.has(u);
 const bus = computed(() => cpu.value?.lastOp?.bus ?? { addr: -1, data: -1, op: 'none' });
 const alu = computed(() => cpu.value?.lastOp?.alu ?? null);
+/** Lit only when the last micro-operation actually performed a memory or device access. */
+const busActive = computed(() => bus.value.op !== 'none' && bus.value.addr >= 0);
 
 interface Box {
   id: string;
@@ -209,25 +214,18 @@ const regRows = computed(() => {
     aria-label="CPU datapath with the units used by the current micro-operation highlighted"
   >
     <!-- buses -->
-    <g class="bus" :class="{ on: on('ADDRESS_BUS') }">
+    <g class="bus" :class="{ on: busActive }">
       <line x1="780" y1="62" x2="820" y2="62" />
       <text x="800" y="30" text-anchor="middle" class="buslabel">address bus</text>
-      <text
-        v-if="on('ADDRESS_BUS') && bus.addr >= 0"
-        x="800"
-        y="54"
-        text-anchor="middle"
-        class="busval"
-        data-testid="dp-address-bus"
-      >
+      <text v-if="busActive" x="800" y="54" text-anchor="middle" class="busval" data-testid="dp-address-bus">
         {{ hex4(bus.addr) }}
       </text>
     </g>
-    <g class="bus" :class="{ on: on('DATA_BUS') }">
+    <g class="bus" :class="{ on: busActive && bus.data >= 0 }">
       <line x1="780" y1="272" x2="820" y2="272" />
       <text x="800" y="320" text-anchor="middle" class="buslabel">data bus</text>
       <text
-        v-if="on('DATA_BUS') && bus.data >= 0"
+        v-if="busActive && bus.data >= 0"
         x="800"
         y="264"
         text-anchor="middle"
@@ -237,24 +235,24 @@ const regRows = computed(() => {
         {{ hex2(bus.data) }} {{ bus.op === 'write' ? '→' : '←' }}
       </text>
     </g>
-    <g class="bus internal" :class="{ on: on('MAR') && (on('PC') || on('AGU')) }">
+    <g class="bus internal">
       <line x1="660" y1="62" x2="690" y2="62" />
     </g>
-    <g class="bus internal" :class="{ on: on('AGU') }">
+    <g class="bus internal">
       <line x1="610" y1="84" x2="610" y2="110" />
       <line x1="610" y1="154" x2="610" y2="180" />
     </g>
-    <g class="bus internal" :class="{ on: on('MDR') }"><line x1="735" y1="84" x2="735" y2="250" /></g>
-    <g class="bus internal" :class="{ on: on('IR') || on('OPR') || on('IMM') }">
+    <g class="bus internal"><line x1="735" y1="84" x2="735" y2="250" /></g>
+    <g class="bus internal">
       <polyline points="820,150 760,150 760,20 185,20 185,40" fill="none" />
     </g>
-    <g class="bus internal" :class="{ on: on('REGISTERS') && on('ALU') }">
+    <g class="bus internal">
       <line x1="220" y1="250" x2="300" y2="250" />
     </g>
-    <g class="bus internal" :class="{ on: on('REGISTERS') && (on('MDR') || on('TMP')) }">
+    <g class="bus internal">
       <polyline points="220,320 540,320 540,272 560,272" fill="none" />
     </g>
-    <g class="bus internal" :class="{ on: on('ALU') && on('FLAGS') }"><line x1="380" y1="330" x2="380" y2="370" /></g>
+    <g class="bus internal"><line x1="380" y1="330" x2="380" y2="370" /></g>
 
     <!-- ALU -->
     <g class="unit" :class="{ on: on('ALU') }">

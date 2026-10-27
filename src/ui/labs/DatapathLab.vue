@@ -30,7 +30,10 @@ const s = useStore();
       >
         Finish / step instruction
       </button>
-      <span class="muted"> Highlighted = driven by the last micro-operation. Values are the live latch contents. </span>
+      <span class="muted">
+        Highlighted units were used by the last micro-operation; the buses light only for an actual memory or device
+        transfer. Values are the live latch contents.
+      </span>
     </div>
     <section class="panel">
       <header>Datapath</header>

@@ -7,6 +7,8 @@ flags   = 0x2000
         .word start
         .org 0x0100
 start:  MOVP SP, #0x3000        ; a stack for CALL
+        MOV R0, #0
+        ST [count], R0          ; RAM survives the Reset button: start from 0
         MOV R0, #0x7F
         ADD R0, #1              ; 127 + 1 = 128: signed overflow (V=1), N=1, no carry
         CALL save               ; -> 0x2000

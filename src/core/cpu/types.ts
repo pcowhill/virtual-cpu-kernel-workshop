@@ -81,6 +81,12 @@ export interface AluActivity {
 
 export interface MicroActivity {
   op: MicroOp | null;
+  /**
+   * Units this execution of the micro-operation actually used: op.units,
+   * narrowed at run time where the work is conditional (e.g. a branch that
+   * is not taken leaves PC alone).
+   */
+  units: number;
   bus: BusActivity;
   alu: AluActivity | null;
   /** Fault raised by this micro-operation, if any. */

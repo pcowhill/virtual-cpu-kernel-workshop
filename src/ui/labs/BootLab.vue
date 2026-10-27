@@ -8,8 +8,8 @@ import { DATA_AREA_BLOCK } from '../../core/build/system';
 
 const s = useStore();
 const v = computed(() => s.view.value);
-const sys = computed(() => s.build.value?.system ?? null);
-const isOs = computed(() => s.build.value?.mode === 'os');
+const sys = computed(() => s.loadedBuild.value?.system ?? null);
+const isOs = computed(() => s.loadedBuild.value?.mode === 'os');
 
 /** Boot stage derived from observable machine state (PC region, events). */
 const stages = computed(() => {
@@ -22,9 +22,12 @@ const stages = computed(() => {
   const kernelStarted = !!view && (!inRom || reachedUser);
   const blocksRead = view ? view.devices.storage.reads : 0;
   const kernelBlocks = k?.count ?? 0;
+  // The reset sequence is complete once the CPU is no longer in it (or never was, after a restore).
+  const resetDone = !!view && view.cycle > 0 && view.cpu.sequence?.kind !== 'reset';
+  const fwRunning = resetDone && ((view?.instructions ?? 0) > 0 || !inRom);
   return [
-    { id: 'reset', label: 'Reset: PC ← vector at 0x0000', done: (view?.cycle ?? 0) >= 5 },
-    { id: 'fw', label: 'Firmware runs from ROM', done: (view?.cycle ?? 0) > 5 },
+    { id: 'reset', label: 'Reset: PC ← vector at 0x0000', done: resetDone },
+    { id: 'fw', label: 'Firmware runs from ROM', done: fwRunning },
     { id: 'hdr', label: 'Boot block 0 read and validated', done: blocksRead >= 1 },
     {
       id: 'copy',

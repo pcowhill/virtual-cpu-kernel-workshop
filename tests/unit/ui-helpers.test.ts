@@ -56,8 +56,17 @@ describe('format helpers', () => {
     expect(parseAddress('0x2000')).toBe(0x2000);
     expect(parseAddress('$FF00')).toBe(0xff00);
     expect(parseAddress('100h')).toBe(0x100);
-    expect(parseAddress('4096')).toBe(4096);
+    // Bare numbers are hex, as the workbench displays them; decimal is explicit.
+    expect(parseAddress('0100')).toBe(0x100);
+    expect(parseAddress('2000')).toBe(0x2000);
+    expect(parseAddress('#4096')).toBe(4096);
+    expect(parseAddress('4096d')).toBe(4096);
+    expect(parseAddress('#70000')).toBeNull();
+    expect(parseAddress('12345')).toBeNull();
     expect(parseAddress('start', (n) => (n === 'start' ? 0x100 : undefined))).toBe(0x100);
+    // Labels that look like hex numbers resolve as labels.
+    expect(parseAddress('add2', (n) => (n === 'add2' ? 0x10f : undefined))).toBe(0x10f);
+    expect(parseAddress('add2')).toBe(0xadd2);
     expect(parseAddress('nope')).toBeNull();
   });
   it('formats flags and signed values', () => {

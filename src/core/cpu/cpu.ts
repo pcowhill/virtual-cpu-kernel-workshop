@@ -117,6 +117,7 @@ export class Cpu {
   /** Activity of the most recent micro-operation. */
   readonly activity: MicroActivity = {
     op: null,
+    units: 0,
     bus: { addr: -1, data: -1, op: 'none' },
     alu: null,
     fault: null,
@@ -374,6 +375,7 @@ export class Cpu {
   private clearActivity(): void {
     const act = this.activity;
     act.op = null;
+    act.units = 0;
     act.bus.addr = -1;
     act.bus.data = -1;
     act.bus.op = 'none';
@@ -400,6 +402,7 @@ export class Cpu {
     const op = program.ops[this.mpc++]!;
     this.clearActivity();
     this.activity.op = op;
+    this.activity.units = op.units;
     this.faulted = false;
     op.run(this);
     if (this.faulted) {

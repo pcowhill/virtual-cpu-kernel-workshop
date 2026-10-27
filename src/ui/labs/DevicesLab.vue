@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useStore } from '../../app/store';
 import TerminalPanel from '../components/TerminalPanel.vue';
 import { hex2, hex4, bin8 } from '../format';
@@ -16,10 +16,19 @@ function sendText(): void {
   text.value = '';
 }
 
+/** Switch positions as last set here, so quick successive clicks are not lost before the next view arrives. */
+let pendingSwitches: number | null = null;
 function toggleSwitch(i: number): void {
-  const cur = d.value?.gpio.switches ?? 0;
-  s.send({ type: 'setSwitches', value: cur ^ (1 << i) });
+  const cur = pendingSwitches ?? d.value?.gpio.switches ?? 0;
+  pendingSwitches = cur ^ (1 << i);
+  s.send({ type: 'setSwitches', value: pendingSwitches });
 }
+watch(
+  () => d.value?.gpio.switches,
+  (v) => {
+    if (v === pendingSwitches) pendingSwitches = null;
+  },
+);
 
 const REGS: { dev: string; regs: [string, number, string][] }[] = [
   {

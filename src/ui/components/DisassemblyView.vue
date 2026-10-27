@@ -21,7 +21,7 @@ const rows = computed<(DisassembledInstruction & { label?: string; source?: stri
   if (!v) return [];
   const mem = v.memory;
   const read = (a: number) => mem[a & 0xffff]!;
-  const build = s.build.value;
+  const build = s.loadedBuild.value;
   const labels = labelResolver(build);
   const starts = (build?.sourceMap ?? [])
     .filter((e) => e.kind === 'instruction' && e.address <= center.value && e.address > center.value - 64)

@@ -26,7 +26,8 @@ export type Command =
   | { type: 'load'; request: LoadRequest }
   | { type: 'powerOn' }
   | { type: 'reset' }
-  | { type: 'run' }
+  /** Run; with `until`, stop before the instruction at that address executes (one-shot breakpoint). */
+  | { type: 'run'; until?: number }
   | { type: 'pause' }
   | { type: 'stop' }
   | { type: 'stepInstruction' }
@@ -49,7 +50,12 @@ export type Request =
   | { type: 'getTrace' }
   | { type: 'getEvents' }
   | { type: 'getDisk' }
-  | { type: 'runDeterministic'; cycles: number };
+  /**
+   * Run `cycles` cycles synchronously. With `ignoreDebugStops`, breakpoints,
+   * watchpoints and break-on-exception settings are suspended for this run
+   * (automated example checks run the whole budget).
+   */
+  | { type: 'runDeterministic'; cycles: number; ignoreDebugStops?: boolean };
 
 export type ToHost = { kind: 'command'; command: Command } | { kind: 'request'; id: number; request: Request };
 

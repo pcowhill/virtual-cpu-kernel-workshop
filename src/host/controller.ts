@@ -38,6 +38,12 @@ export class MachineController {
   speed: SpeedSetting = DEFAULT_SPEED;
   private stop: MachineView['stop'] = null;
   private carry = 0;
+  /** True until the first slice of a run has executed (see Machine.run's `fresh`). */
+  private freshRun = false;
+  /** One-shot "run to" address, removed when the run stops for any reason. */
+  private runUntil: number | null = null;
+  /** Breakpoints set by the user (the machine's set may also hold runUntil). */
+  private userBreakpoints = new Set<number>();
   private lastTick = 0;
   private seq = 0;
   private hzWindow: { t: number; c: number }[] = [];
@@ -79,6 +85,8 @@ export class MachineController {
         }
         this.runState = 'running';
         this.stop = null;
+        this.freshRun = true;
+        this.setRunUntil(cmd.until ?? null);
         this.carry = 0;
         this.lastTick = now;
         this.hzWindow = [{ t: now, c: m.cycle }];
@@ -88,9 +96,11 @@ export class MachineController {
           this.runState = 'paused';
           this.stop = { reason: 'user', detail: 'paused' };
         }
+        this.setRunUntil(null);
         break;
       case 'stop':
         this.runState = 'paused';
+        this.setRunUntil(null);
         this.powerOn();
         this.stop = { reason: 'user', detail: 'stopped: machine returned to its power-on state' };
         break;
@@ -108,8 +118,8 @@ export class MachineController {
         this.carry = 0;
         break;
       case 'setBreakpoints':
-        m.breakpoints.clear();
-        for (const a of cmd.addresses) m.breakpoints.add(a & 0xffff);
+        this.userBreakpoints = new Set(cmd.addresses.map((a) => a & 0xffff));
+        this.syncBreakpoints();
         break;
       case 'setWatchpoints':
         m.watchpoints.clear();
@@ -160,14 +170,45 @@ export class MachineController {
       case 'getDisk':
         return m.storage.image.slice();
       case 'runDeterministic': {
-        const r = m.run(req.cycles);
+        this.runState = 'paused';
+        this.setRunUntil(null);
+        let r: RunResult;
+        if (req.ignoreDebugStops) {
+          const saved = { bp: new Set(m.breakpoints), wp: new Map(m.watchpoints), on: m.breakOn };
+          m.breakpoints.clear();
+          m.watchpoints.clear();
+          m.breakOn = { faults: false, traps: false, interrupts: false };
+          try {
+            r = m.run(req.cycles);
+          } finally {
+            for (const a of saved.bp) m.breakpoints.add(a);
+            for (const [a, k] of saved.wp) m.watchpoints.set(a, k);
+            m.breakOn = saved.on;
+          }
+        } else {
+          r = m.run(req.cycles);
+        }
+        this.stop = this.toStop(r);
         this.dirty = true;
         return r;
       }
     }
   }
 
+  private setRunUntil(addr: number | null): void {
+    this.runUntil = addr === null ? null : addr & 0xffff;
+    this.syncBreakpoints();
+  }
+
+  private syncBreakpoints(): void {
+    const bp = this.machine.breakpoints;
+    bp.clear();
+    for (const a of this.userBreakpoints) bp.add(a);
+    if (this.runUntil !== null) bp.add(this.runUntil);
+  }
+
   private load(req: LoadRequest): void {
+    this.setRunUntil(null);
     this.config = req.config;
     this.label = req.label;
     this.layout = req.kernelSymbols ? kernelLayout(req.kernelSymbols) : null;
@@ -189,7 +230,7 @@ export class MachineController {
     const r = /^R([0-7])$/.exec(up);
     if (r) c.r[Number(r[1])] = value & 0xff;
     else if (up === 'PC') c.pc = value & 0xffff;
-    else if (up === 'SP') c.sp = value;
+    else if (up === 'SP') c.sp = value & 0xffff;
     else if (up === 'KSP') c.ksp = value & 0xffff;
     else if (up === 'USP') c.usp = value & 0xffff;
     else if (up in CR) c.setCR(CR[up as keyof typeof CR], value);
@@ -214,20 +255,30 @@ export class MachineController {
     if (this.speed === 'max') {
       const deadline = clock() + MAX_SPEED_SLICE_MS;
       do {
-        result = m.run(20_000);
+        result = m.run(20_000, Infinity, this.freshRun);
+        this.freshRun = false;
         if (result.reason !== 'budget') break;
       } while (clock() < deadline);
     } else {
       this.carry += (this.speed * dt) / 1000;
       const n = Math.floor(this.carry);
       this.carry -= n;
-      if (n > 0) result = m.run(n);
+      if (n > 0) {
+        result = m.run(n, Infinity, this.freshRun);
+        this.freshRun = false;
+      }
     }
     this.measure(now);
     this.dirty = true;
     if (result && result.reason !== 'budget') {
       this.runState = 'paused';
       this.stop = this.toStop(result);
+      if (result.reason === 'breakpoint' && this.runUntil !== null && this.machine.cpu.pc === this.runUntil)
+        this.stop = {
+          reason: 'breakpoint',
+          detail: `ran to 0x${this.runUntil.toString(16).toUpperCase().padStart(4, '0')}`,
+        };
+      this.setRunUntil(null);
       return true;
     }
     return false;
@@ -255,7 +306,7 @@ export class MachineController {
   view(): MachineView {
     const m = this.machine;
     const c = m.cpu;
-    const prog = c.program ?? (c.halted ? null : null);
+    const prog = c.program;
     const nextKind = m.nextSequenceKind();
     let sequence: CpuView['sequence'] = null;
     if (prog) {
@@ -309,7 +360,7 @@ export class MachineController {
         ? {
             name: act.op.name,
             rtl: act.op.rtl,
-            units: unitNames(act.op.units),
+            units: unitNames(act.units),
             bus: { ...act.bus },
             alu: act.alu ? { ...act.alu } : null,
             fault: act.fault ? { ...act.fault } : null,
@@ -365,7 +416,7 @@ export class MachineController {
       trace: m.trace.last(VIEW_TRACE),
       traceTotal: m.trace.total,
       events: m.events.last(VIEW_EVENTS),
-      breakpoints: [...m.breakpoints],
+      breakpoints: [...this.userBreakpoints],
       watchpoints: [...m.watchpoints.entries()],
       breakOn: { ...m.breakOn },
       traceEnabled: m.traceEnabled,

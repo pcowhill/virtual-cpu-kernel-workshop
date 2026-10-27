@@ -12,6 +12,8 @@ ticks   = 0x2000
         .word tick                      ; 8: IRQ0 timer
         .org 0x0100
 start:  MOVP SP, #0x3000
+        MOV R0, #0
+        ST [ticks], R0          ; RAM survives the Reset button: start from 0
         MOVP P0, #500
         ST [TIMER_RELOAD_LO], R1
         ST [TIMER_RELOAD_HI], R0

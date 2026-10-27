@@ -7,6 +7,7 @@
 import type { ProgramSpec } from '../core/build/system';
 import type { ProcessInfo } from '../core/os/awareness';
 import type { LabId } from '../app/store';
+import type { MachineView } from '../host/protocol';
 
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 
@@ -20,6 +21,10 @@ export interface ExampleCheck {
   mem?: Record<number, number>;
   leds?: number;
   processes?: { name: string; exitCode?: number; state?: string }[];
+  /** The run must end with the CPU halted (HLT with no interrupt line enabled), not by using up the budget. */
+  halted?: boolean;
+  /** Minimum number of writes to the LED register. */
+  ledWritesAtLeast?: number;
 }
 
 export interface Example {
@@ -52,6 +57,7 @@ export const EXAMPLES: Example[] = [
     concepts: ['registers', 'loops', 'flags', 'memory-mapped I/O'],
     lab: 'cpu',
     check: {
+      halted: true,
       cycles: 20_000,
       regs: { R0: 0x37 },
       mem: { 0x2000: 0x37 },
@@ -70,7 +76,11 @@ export const EXAMPLES: Example[] = [
     expected: 'P0 = 0x1410, R4 = 0xFE (254 or -2), R5 = 0x02, P1 = 0x1530.',
     concepts: ['8-bit registers', 'register pairs', 'carry chain', "two's complement"],
     lab: 'cpu',
-    check: { cycles: 5_000, regs: { R0: 0x14, R1: 0x10, R4: 0xfe, R5: 0x02, R2: 0x15, R3: 0x30 } },
+    check: {
+      halted: true,
+      cycles: 5_000,
+      regs: { R0: 0x14, R1: 0x10, R4: 0xfe, R5: 0x02, R2: 0x15, R3: 0x30 },
+    },
   },
   {
     id: 'overflow-carry',
@@ -83,7 +93,11 @@ export const EXAMPLES: Example[] = [
     expected: 'RAM 0x2000–0x2003 = 0C 03 08 05 (flag bits V N Z C).',
     concepts: ['flags', 'signed overflow', 'carry and borrow'],
     lab: 'cpu',
-    check: { cycles: 10_000, mem: { 0x2000: 0x0c, 0x2001: 0x03, 0x2002: 0x08, 0x2003: 0x05 } },
+    check: {
+      halted: true,
+      cycles: 10_000,
+      mem: { 0x2000: 0x0c, 0x2001: 0x03, 0x2002: 0x08, 0x2003: 0x05 },
+    },
   },
   {
     id: 'conditional-loop',
@@ -96,7 +110,11 @@ export const EXAMPLES: Example[] = [
     expected: 'R0 = 3 (unsigned), R1 = 2 (signed): 200 is -56 when read as signed.',
     concepts: ['branches', 'CMP', 'signed/unsigned conditions', 'pointers'],
     lab: 'cpu',
-    check: { cycles: 10_000, regs: { R0: 3, R1: 2 } },
+    check: {
+      halted: true,
+      cycles: 10_000,
+      regs: { R0: 3, R1: 2 },
+    },
   },
   {
     id: 'memory-copy',
@@ -110,6 +128,7 @@ export const EXAMPLES: Example[] = [
     concepts: ['register-indirect addressing', 'INCP', 'subroutines'],
     lab: 'memory',
     check: {
+      halted: true,
       cycles: 30_000,
       mem: { 0x2100: 0x54 },
       terminalIncludes: ['This string was copied from ROM to RAM 0x2100.'],
@@ -125,7 +144,11 @@ export const EXAMPLES: Example[] = [
     expected: 'R7 = 42; SP back at 0x3000.',
     concepts: ['stack', 'CALL/RET', 'SP-relative addressing'],
     lab: 'memory',
-    check: { cycles: 5_000, regs: { R7: 42 } },
+    check: {
+      halted: true,
+      cycles: 5_000,
+      regs: { R7: 42 },
+    },
   },
   {
     id: 'recursion',
@@ -137,7 +160,12 @@ export const EXAMPLES: Example[] = [
     expected: 'R0 = 55 (0x37), also stored at RAM 0x2000.',
     concepts: ['recursion', 'stack frames', 'nested calls'],
     lab: 'memory',
-    check: { cycles: 100_000, regs: { R0: 55 }, mem: { 0x2000: 55 } },
+    check: {
+      halted: true,
+      cycles: 100_000,
+      regs: { R0: 55 },
+      mem: { 0x2000: 55 },
+    },
   },
   {
     id: 'hello-terminal',
@@ -149,7 +177,11 @@ export const EXAMPLES: Example[] = [
     expected: '"Hello, world!" on the terminal.',
     concepts: ['memory-mapped I/O', 'polling'],
     lab: 'devices',
-    check: { cycles: 20_000, terminalIncludes: ['Hello, world!'] },
+    check: {
+      halted: true,
+      cycles: 20_000,
+      terminalIncludes: ['Hello, world!'],
+    },
   },
   {
     id: 'keyboard-echo',
@@ -161,7 +193,12 @@ export const EXAMPLES: Example[] = [
     expected: 'Typing "ab." prints "AB.".',
     concepts: ['input devices', 'FIFO', 'polling'],
     lab: 'devices',
-    check: { cycles: 30_000, keys: 'ab.', terminalIncludes: ['AB.'] },
+    check: {
+      halted: true,
+      cycles: 30_000,
+      keys: 'ab.',
+      terminalIncludes: ['AB.'],
+    },
   },
   {
     id: 'led-blink',
@@ -173,7 +210,12 @@ export const EXAMPLES: Example[] = [
     expected: 'A light moves across the 8 LEDs twice, then all LEDs are off.',
     concepts: ['GPIO', 'delay loops', 'shifts'],
     lab: 'devices',
-    check: { cycles: 1_000_000, leds: 0 },
+    check: {
+      halted: true,
+      cycles: 1_000_000,
+      leds: 0,
+      ledWritesAtLeast: 17,
+    },
   },
   {
     id: 'timer-interrupt',
@@ -186,7 +228,12 @@ export const EXAMPLES: Example[] = [
     expected: '10 dots, then "10 timer interrupts handled."; RAM 0x2000 = 10.',
     concepts: ['interrupts', 'vector table', 'RTI', 'HLT', 'acknowledging devices'],
     lab: 'kernel',
-    check: { cycles: 60_000, mem: { 0x2000: 10 }, terminalIncludes: ['..........\n10 timer interrupts handled.'] },
+    check: {
+      halted: true,
+      cycles: 60_000,
+      mem: { 0x2000: 10 },
+      terminalIncludes: ['..........\n10 timer interrupts handled.'],
+    },
   },
   {
     id: 'syscall-trap',
@@ -199,7 +246,11 @@ export const EXAMPLES: Example[] = [
     expected: '"Printed by user code through SYS" on the terminal.',
     concepts: ['privilege modes', 'SYS trap', 'RTI', 'banked stack pointers'],
     lab: 'kernel',
-    check: { cycles: 60_000, terminalIncludes: ['Printed by user code through SYS'] },
+    check: {
+      halted: true,
+      cycles: 60_000,
+      terminalIncludes: ['Printed by user code through SYS'],
+    },
   },
   {
     id: 'privileged-fault',
@@ -212,7 +263,11 @@ export const EXAMPLES: Example[] = [
     expected: '"Privilege fault! Faulting instruction at 0x6003".',
     concepts: ['privileged instructions', 'faults', 'exception frame'],
     lab: 'kernel',
-    check: { cycles: 30_000, terminalIncludes: ['Privilege fault! Faulting instruction at 0x6003'] },
+    check: {
+      halted: true,
+      cycles: 30_000,
+      terminalIncludes: ['Privilege fault! Faulting instruction at 0x6003'],
+    },
   },
   {
     id: 'protection-fault',
@@ -225,7 +280,11 @@ export const EXAMPLES: Example[] = [
     expected: '"Memory fault: CAUSE=0x04 FADDR=0x7000".',
     concepts: ['base/limit protection', 'UBASE/ULIMIT', 'CAUSE/FADDR'],
     lab: 'memory',
-    check: { cycles: 30_000, terminalIncludes: ['Memory fault: CAUSE=0x04 FADDR=0x7000'] },
+    check: {
+      halted: true,
+      cycles: 30_000,
+      terminalIncludes: ['Memory fault: CAUSE=0x04 FADDR=0x7000'],
+    },
   },
   {
     id: 'storage-read',
@@ -238,7 +297,11 @@ export const EXAMPLES: Example[] = [
     expected: 'The text stored in block 128 appears on the terminal.',
     concepts: ['block storage', 'command/status registers', 'programmed I/O'],
     lab: 'devices',
-    check: { cycles: 60_000, terminalIncludes: ['Hello from block storage!'] },
+    check: {
+      halted: true,
+      cycles: 60_000,
+      terminalIncludes: ['Hello from block storage!'],
+    },
   },
   {
     id: 'os-boot',
@@ -413,7 +476,23 @@ export interface CheckState {
   r: number[];
   peek(addr: number): number;
   leds: number;
+  ledWrites: number;
   processes: ProcessInfo[] | null;
+  /** Why the check run ended (null if it used its whole cycle budget). */
+  stopReason: string | null;
+}
+
+/** The state a check reads, taken from a machine view after the check run. */
+export function checkStateFromView(v: MachineView): CheckState {
+  return {
+    terminal: [...v.devices.terminal.lines, v.devices.terminal.current].join('\n'),
+    r: v.cpu.r,
+    peek: (a) => v.memory[a & 0xffff]!,
+    leds: v.devices.gpio.leds,
+    ledWrites: v.devices.gpio.ledWrites,
+    processes: v.os?.processes ?? null,
+    stopReason: v.stop?.reason ?? null,
+  };
 }
 
 export interface CheckResult {
@@ -437,6 +516,16 @@ export function evaluateCheck(check: ExampleCheck, st: CheckState): CheckResult 
     const got = st.peek(Number(a));
     t(got === v, `RAM ${h(Number(a))} = ${h(v)}${got === v ? '' : ` (got ${h(got)})`}`);
   }
+  if (check.halted)
+    t(
+      st.stopReason === 'halted',
+      `program ran to its end (HLT)${st.stopReason === 'halted' ? '' : ` (got ${st.stopReason ?? 'still running'})`}`,
+    );
+  if (check.ledWritesAtLeast !== undefined)
+    t(
+      st.ledWrites >= check.ledWritesAtLeast,
+      `LEDs written at least ${check.ledWritesAtLeast} times (got ${st.ledWrites})`,
+    );
   if (check.leds !== undefined)
     t(st.leds === check.leds, `LEDs = ${h(check.leds)}${st.leds === check.leds ? '' : ` (got ${h(st.leds)})`}`);
   if (check.processes) {

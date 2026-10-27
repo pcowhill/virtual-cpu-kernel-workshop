@@ -16,6 +16,7 @@ import EditorLab from '../../src/ui/labs/EditorLab.vue';
 import MemoryLab from '../../src/ui/labs/MemoryLab.vue';
 import ExamplesLab from '../../src/ui/labs/ExamplesLab.vue';
 import DatapathLab from '../../src/ui/labs/DatapathLab.vue';
+import TerminalPanel from '../../src/ui/components/TerminalPanel.vue';
 
 async function until(pred: (v: MachineView) => boolean, timeoutMs = 5000): Promise<MachineView> {
   const s = useStore();
@@ -126,6 +127,29 @@ describe('ControlBar + RegisterPanel', () => {
     const v = await until((x) => x.runState === 'paused' && x.stop?.reason === 'breakpoint');
     expect(v.cpu.pc).toBe(done);
     expect(v.cpu.r[0]).toBe(55);
+  });
+});
+
+describe('TerminalPanel', () => {
+  it('sends typed characters (including capital F) to the keyboard device, and Escape leaves the terminal', async () => {
+    await loadFirstProgram();
+    const s = useStore();
+    const sent: unknown[] = [];
+    const orig = s.send;
+    const spy = vi.spyOn(s.client, 'send').mockImplementation((c) => {
+      sent.push(c);
+    });
+    const w = mountC(TerminalPanel);
+    const screen = w.get('[data-testid=terminal]');
+    (screen.element as HTMLElement).focus();
+    await screen.trigger('keydown', { key: 'F' });
+    await screen.trigger('keydown', { key: 'F5' });
+    await screen.trigger('keydown', { key: 'Tab' });
+    expect(sent).toEqual([{ type: 'injectKeys', bytes: [0x46] }]);
+    await screen.trigger('keydown', { key: 'Escape' });
+    expect(document.activeElement).not.toBe(screen.element);
+    spy.mockRestore();
+    expect(s.send).toBe(orig);
   });
 });
 

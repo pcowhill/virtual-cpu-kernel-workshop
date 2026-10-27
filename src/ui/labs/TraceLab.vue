@@ -13,7 +13,7 @@ const bpText = ref('');
 const wpText = ref('');
 const wpKind = ref<'r' | 'w' | 'rw'>('w');
 const v = computed(() => s.view.value);
-const labels = computed(() => labelResolver(s.build.value));
+const labels = computed(() => labelResolver(s.loadedBuild.value));
 
 function lookup(name: string): number | undefined {
   return s.symbol(name);

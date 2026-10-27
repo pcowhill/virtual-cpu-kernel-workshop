@@ -14,7 +14,7 @@ const filter = ref<'all' | 'syscall' | 'irq' | 'fault'>('all');
 const vectors = computed(() => {
   const view = v.value;
   if (!view) return [];
-  const labels = labelResolver(s.build.value);
+  const labels = labelResolver(s.loadedBuild.value);
   const base = view.cpu.vbase;
   return Array.from({ length: 16 }, (_, i) => {
     const a = (base + 2 * i) & 0xffff;
@@ -54,7 +54,7 @@ function describe(e: (typeof events.value)[number]): string {
 /** The kernel's most recent trap frame, if the kernel exports `kframe`. */
 const frame = computed(() => {
   const view = v.value;
-  const sym = s.build.value?.system?.kernelSymbols['kframe'];
+  const sym = s.loadedBuild.value?.system?.kernelSymbols['kframe'];
   if (!view || sym === undefined) return null;
   const f = view.memory[sym]! | (view.memory[sym + 1]! << 8);
   if (f === 0) return null;

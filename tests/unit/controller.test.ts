@@ -83,6 +83,92 @@ describe('MachineController', () => {
     expect(c.runState).toBe('paused');
   });
 
+  /** Run at a fixed speed with 1 ms real-time slices until execution stops. */
+  function runAt(
+    c: MachineController,
+    speed: number,
+    cmd: Parameters<MachineController['handle']>[0] = { type: 'run' },
+  ) {
+    c.handle({ type: 'setSpeed', speed }, 0);
+    c.handle(cmd, 0);
+    let t = 0;
+    for (let i = 0; i < 2_000_000 && c.runState === 'running'; i++) c.tick(++t);
+    return c.view();
+  }
+
+  it('breakpoints are hit at every speed, whatever the slice boundaries', () => {
+    for (const speed of [2_000, 10_000, 50_000, 1_000, 3_000, 7_000]) {
+      // speed / 1000 cycles per 1 ms slice: from 2 cycles per slice upward, so
+      // slices end on instruction boundaries as well as inside instructions.
+      const c = new MachineController();
+      const req = load();
+      c.handle({ type: 'load', request: req }, 0);
+      for (const label of ['loop', 'print', 'done']) {
+        c.handle({ type: 'setBreakpoints', addresses: [req.symbols[label]!] }, 0);
+        const v = runAt(c, speed);
+        expect(v.stop?.reason, `${label} at ${speed}`).toBe('breakpoint');
+        expect(v.cpu.pc, `${label} at ${speed}`).toBe(req.symbols[label]);
+      }
+    }
+  });
+
+  it('a write watchpoint is not lost when the slice ends inside the writing instruction', () => {
+    for (const speed of [1_000, 2_000, 3_000]) {
+      const c = new MachineController();
+      c.handle({ type: 'load', request: load() }, 0);
+      c.handle({ type: 'setWatchpoints', watchpoints: [[0x2000, 'w']] }, 0);
+      const v = runAt(c, speed);
+      expect(v.stop?.reason, `at ${speed}`).toBe('watchpoint');
+      expect(v.lastWatchHit?.addr).toBe(0x2000);
+      expect(c.machine.bus.peek(0x2000)).toBe(0x37);
+    }
+  });
+
+  it('run-to stops once at the target and does not leave a breakpoint behind', () => {
+    const c = new MachineController();
+    const req = load();
+    c.handle({ type: 'load', request: req }, 0);
+    c.handle({ type: 'setBreakpoints', addresses: [req.symbols['loop']!] }, 0);
+    let v = runAt(c, 10_000);
+    expect(v.cpu.pc).toBe(req.symbols['loop']);
+    // Run to `print` from a previous breakpoint stop (the stale stop must not cancel it).
+    c.handle({ type: 'setBreakpoints', addresses: [] }, 0);
+    v = runAt(c, 10_000, { type: 'run', until: req.symbols['print']! });
+    expect(v.stop?.reason).toBe('breakpoint');
+    expect(v.cpu.pc).toBe(req.symbols['print']);
+    expect(v.breakpoints).toEqual([]);
+    expect([...c.machine.breakpoints]).toEqual([]);
+    // Pausing also cancels a pending run-to.
+    c.handle({ type: 'run', until: req.symbols['done']! }, 0);
+    c.handle({ type: 'pause' }, 0);
+    expect([...c.machine.breakpoints]).toEqual([]);
+    v = runAt(c, 10_000);
+    expect(v.stop?.reason).toBe('halted');
+  });
+
+  it('runDeterministic can suspend debug stops for automated checks and restores them', () => {
+    const c = new MachineController();
+    const req = load('examples/protection-fault.asm');
+    c.handle({ type: 'load', request: req }, 0);
+    c.handle({ type: 'setBreakOn', breakOn: { faults: true, traps: false, interrupts: false } }, 0);
+    c.handle({ type: 'setBreakpoints', addresses: [0x0100] }, 0);
+    c.handle({ type: 'setWatchpoints', watchpoints: [[0x6800, 'w']] }, 0);
+    c.request({ type: 'runDeterministic', cycles: 30_000, ignoreDebugStops: true });
+    let v = c.view();
+    expect(v.stop?.reason).toBe('halted');
+    expect(v.devices.terminal.lines.join('\n')).toContain('CAUSE=0x04 FADDR=0x7000');
+    expect(v.breakpoints).toEqual([0x0100]);
+    expect(v.watchpoints).toEqual([[0x6800, 'w']]);
+    expect(v.breakOn.faults).toBe(true);
+    // Without the option the same settings stop the run.
+    c.handle({ type: 'powerOn' }, 0);
+    c.request({ type: 'runDeterministic', cycles: 30_000 });
+    expect(c.view().stop?.reason).toBe('breakpoint');
+    c.request({ type: 'runDeterministic', cycles: 30_000 });
+    v = c.view();
+    expect(v.stop?.reason).toBe('watchpoint');
+  });
+
   it('debugger edits and snapshots', () => {
     const c = new MachineController();
     c.handle({ type: 'load', request: load() }, 0);

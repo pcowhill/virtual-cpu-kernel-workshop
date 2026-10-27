@@ -26,8 +26,6 @@ function keyToByte(e: KeyboardEvent): number | null {
   }
   if (e.key === 'Enter') return 13;
   if (e.key === 'Backspace') return 8;
-  if (e.key === 'Escape') return 27;
-  if (e.key === 'Tab') return 9;
   if (e.key.length === 1) {
     const c = e.key.charCodeAt(0);
     return c < 128 ? c : null;
@@ -36,7 +34,13 @@ function keyToByte(e: KeyboardEvent): number | null {
 }
 
 function onKey(e: KeyboardEvent): void {
-  if (e.key.startsWith('F')) return; // leave debugger shortcuts alone
+  if (/^F\d{1,2}$/.test(e.key)) return; // leave debugger shortcuts alone
+  // Tab moves focus as usual and Escape leaves the terminal, so keyboard users are never trapped.
+  if (e.key === 'Tab') return;
+  if (e.key === 'Escape') {
+    (e.currentTarget as HTMLElement).blur();
+    return;
+  }
   const b = keyToByte(e);
   if (b === null) return;
   e.preventDefault();
@@ -51,7 +55,7 @@ function onKey(e: KeyboardEvent): void {
       Terminal
       <span class="spacer" />
       <span class="faint" style="text-transform: none; font-weight: 400">
-        {{ focused ? 'typing goes to the virtual keyboard' : 'click to type' }}
+        {{ focused ? 'typing goes to the virtual keyboard · Esc leaves' : 'click to type' }}
       </span>
     </header>
     <pre

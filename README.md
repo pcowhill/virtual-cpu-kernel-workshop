@@ -33,7 +33,7 @@ renders the snapshots the machine publishes. Labs:
 - **Boot & firmware**, **Kernel & interrupts**, **Processes & scheduling** — OS-aware views decoded from kernel
   memory: boot stages, interrupt and syscall log, process table, scheduling timeline.
 - **Trace & breakpoints** — bounded instruction trace, breakpoints, break-on-exception settings.
-- **Examples** — 24 catalog programs, each with automated checks run on the emulator.
+- **Examples** — 23 catalog programs, each with automated checks run on the emulator.
 - **Reference** — instruction set (with micro-programs), specification, kernel and walkthrough documents.
 
 ## Development

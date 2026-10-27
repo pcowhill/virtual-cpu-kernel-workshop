@@ -22,16 +22,21 @@ export function printable(b: number): string {
 }
 
 /** Parse "0x1234", "1234h", "$1234", decimal, or a symbol via `lookup`. */
+/**
+ * Parse an address typed by the user. Symbols of the loaded program win;
+ * numbers are hexadecimal like everywhere else in the workbench (0x2000,
+ * $2000, 2000h or plain 2000); decimal needs a # prefix or d suffix.
+ */
 export function parseAddress(text: string, lookup?: (name: string) => number | undefined): number | null {
   const t = text.trim();
   if (!t) return null;
-  let m = /^(?:0x|\$)([0-9a-f]+)$/i.exec(t) ?? /^([0-9a-f]+)h$/i.exec(t);
-  if (m) return parseInt(m[1]!, 16) & 0xffff;
-  m = /^[0-9]+$/.exec(t);
-  if (m) return Number(t) & 0xffff;
-  if (/^[0-9a-f]{1,4}$/i.test(t)) return parseInt(t, 16);
   const v = lookup?.(t);
-  return v === undefined ? null : v & 0xffff;
+  if (v !== undefined) return v & 0xffff;
+  let m = /^(?:0x|\$)([0-9a-f]{1,4})$/i.exec(t) ?? /^([0-9a-f]{1,4})h$/i.exec(t) ?? /^([0-9a-f]{1,4})$/i.exec(t);
+  if (m) return parseInt(m[1]!, 16);
+  m = /^#([0-9]{1,5})$/.exec(t) ?? /^([0-9]{1,5})d$/i.exec(t);
+  if (m && Number(m[1]) <= 0xffff) return Number(m[1]);
+  return null;
 }
 
 export function formatCycles(c: number): string {
