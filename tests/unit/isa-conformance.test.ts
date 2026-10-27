@@ -56,7 +56,7 @@ const cases: IsaCase[] = [
     code: 'RTI',
     regs: { KSP: 0x2ffd },
     mem: { 0x2ffd: 0xff, 0x2ffe: 0x00, 0x2fff: 0x02 },
-    expect: { regs: { PSW: 0xcf } },
+    expect: { regs: { PSW: 0xcf, KSP: 0x3000 } },
   },
 
   // ---------------- 8-bit data movement ----------------
@@ -194,7 +194,7 @@ const cases: IsaCase[] = [
     expect: { mem: { 0x2801: 0x00, 0x2802: 0x2f }, cycles: 8 },
   },
   {
-    name: 'STW whose second byte faults leaves the first byte written',
+    name: 'STW to ROM faults on the first byte and writes nothing',
     code: 'STW [0x1FFF], P0',
     regs: { P0: 0x1234 },
     // 0x1FFF is ROM: the first byte faults immediately
@@ -238,7 +238,7 @@ const cases: IsaCase[] = [
     code: 'MTC KSCRATCH, P0\nMFC P1, KSCRATCH',
     steps: 2,
     regs: { P0: 0xbeef },
-    expect: { regs: { P1: 0xbeef } },
+    expect: { regs: { P1: 0xbeef, KSCRATCH: 0xbeef } },
   },
   {
     name: 'MTC PSW sets flags and I',
@@ -518,7 +518,7 @@ const cases: IsaCase[] = [
     code: 'CALL sub\nback: NOP\nsub: RET',
     steps: 2,
     regs: { SP: 0x3000 },
-    expect: { pc: 'back', regs: { SP: 0x3000 } },
+    expect: { pc: 'back', regs: { SP: 0x3000 }, mem: { 0x2fff: 0x01, 0x2ffe: 0x03 } },
   },
 
   // ---------------- invalid encodings and privilege ----------------

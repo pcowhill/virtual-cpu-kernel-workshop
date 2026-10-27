@@ -67,6 +67,12 @@ An 8-bit register field uses codes 0–7 for `R0`–`R7`; codes 8–15 raise an
 illegal-instruction fault. Unused register fields must be zero; a non-zero
 unused field is an invalid encoding and raises an illegal-instruction fault.
 
+Fault precedence within one instruction follows the micro-program order:
+opcode fetch (memory fault) → decode (illegal opcode, then privilege) →
+operand fetch and register-field validation (illegal instruction) → data
+accesses (memory fault). For example, a privileged opcode with an invalid
+register byte executed in user mode raises a privilege fault.
+
 ### 2.3 Program counter
 
 `PC` is 16 bits and wraps modulo 65 536. It always holds the address of the next
@@ -181,9 +187,18 @@ user code cannot widen its window, and because the region rule is applied in
 addition to the window, even a misconfigured window can never expose ROM,
 kernel RAM or devices to user mode.
 
-16-bit memory accesses are two byte accesses (low address first), each checked
-independently. A multi-byte store whose second byte faults leaves the first
-byte written (documented simplification: stores are not transactional).
+16-bit memory accesses are two byte accesses, each checked independently.
+Loads (`LDW`, `POPP`, `RET`, `RTI`) and stores to a given address (`STW`) touch
+the low address first. Pushes (`PUSHP`, `CALL`, exception entry) write the
+_higher_ address first, because they move down the stack. A multi-byte write
+whose later byte faults leaves the earlier byte(s) written. Registers, `SP`,
+flags and `PC` are still restored exactly, so the fault is reported precisely,
+but memory below the stack pointer (or the first byte of an `STW`) may have
+changed (documented simplification: stores are not transactional).
+
+The protection unit checks addresses only. The supervisor may access every
+user window, so a kernel that accepts pointers from user programs must check
+them in software (the reference kernel does this for every system call).
 
 ### 3.3 Device decoding
 
@@ -199,18 +214,19 @@ always have their defined side effects.
 
 All 8-bit arithmetic wraps modulo 256 and all 16-bit arithmetic modulo 65 536.
 
-| Operation                              | C                                  | Z                 | N         | V                      |
-| -------------------------------------- | ---------------------------------- | ----------------- | --------- | ---------------------- |
-| `ADD`, `ADC`                           | carry out of bit 7                 | result = 0        | bit 7     | signed overflow        |
-| `SUB`, `SBC`, `CMP`, `NEG`             | **borrow** (1 if unsigned `a < b`) | result = 0        | bit 7     | signed overflow        |
-| `AND`, `OR`, `XOR`, `NOT`, `TST`       | 0                                  | result = 0        | bit 7     | 0                      |
-| `INC`, `DEC`                           | unchanged                          | result = 0        | bit 7     | signed overflow        |
-| `SHL`, `ROL`                           | old bit 7                          | result = 0        | bit 7     | 0                      |
-| `SHR`, `SAR`, `ROR`                    | old bit 0                          | result = 0        | bit 7     | 0                      |
-| `ADDP`, `SUBP`, `CMPP`                 | carry/borrow out of bit 15         | 16-bit result = 0 | bit 15    | 16-bit signed overflow |
-| `INCP`, `DECP`                         | unchanged                          | 16-bit result = 0 | unchanged | unchanged              |
-| `CLC` / `SEC`                          | 0 / 1                              | unchanged         | unchanged | unchanged              |
-| moves, loads, stores, push, pop, jumps | unchanged                          | unchanged         | unchanged | unchanged              |
+| Operation                              | C                                  | Z                 | N                | V                      |
+| -------------------------------------- | ---------------------------------- | ----------------- | ---------------- | ---------------------- |
+| `ADD`, `ADC`                           | carry out of bit 7                 | result = 0        | bit 7            | signed overflow        |
+| `SUB`, `SBC`, `CMP`, `NEG`             | **borrow** (1 if unsigned `a < b`) | result = 0        | bit 7            | signed overflow        |
+| `AND`, `OR`, `XOR`, `NOT`, `TST`       | 0                                  | result = 0        | bit 7            | 0                      |
+| `INC`, `DEC`                           | unchanged                          | result = 0        | bit 7            | signed overflow        |
+| `SHL`, `ROL`                           | old bit 7                          | result = 0        | bit 7            | 0                      |
+| `SHR`, `SAR`, `ROR`                    | old bit 0                          | result = 0        | bit 7            | 0                      |
+| `ADDP`, `SUBP`, `CMPP`                 | carry/borrow out of bit 15         | 16-bit result = 0 | bit 15           | 16-bit signed overflow |
+| `INCP`, `DECP`                         | unchanged                          | 16-bit result = 0 | unchanged        | unchanged              |
+| `CLC` / `SEC`                          | 0 / 1                              | unchanged         | unchanged        | unchanged              |
+| `RTI`, `MTC PSW`                       | restored/written                   | restored/written  | restored/written | restored/written       |
+| moves, loads, stores, push, pop, jumps | unchanged                          | unchanged         | unchanged        | unchanged              |
 
 `ADC` adds `C`; `SBC` subtracts `C` (borrow). `ROL`/`ROR` rotate through carry
 (a 9-bit rotation). `NEG` computes `0 − a`. Signed overflow for addition is set
@@ -347,7 +363,10 @@ The resulting **exception frame** on the supervisor stack is:
 
 The hardware saves **only** `PC` and `PSW` (and switches stacks). The handler
 must save any general registers it uses, and the kernel must save `USP` itself
-if it will run another process.
+if it will run another process. `CAUSE` and `FADDR` are _not_ part of the
+frame: a later exception overwrites them, so a handler that needs them must
+read them before it can cause or permit another exception. `FADDR` is written
+only by memory faults; other exceptions leave it unchanged.
 
 If any access during exception entry faults (for example, a kernel stack that
 points into ROM), the CPU stops in **machine-check** state with the reason
@@ -429,12 +448,12 @@ a line stays asserted until software acknowledges the condition at the device.
 
 ### 8.1 System control — `0xF000`
 
-| Addr            | Name        | Access | Description                                                                   |
-| --------------- | ----------- | ------ | ----------------------------------------------------------------------------- |
-| `0xF000`        | `ID`        | R      | `0x56` (`'V'`)                                                                |
-| `0xF001`        | `VERSION`   | R      | `0x10` (spec 1.0)                                                             |
-| `0xF002`        | `POWER`     | W      | writing `0xA5` powers the machine off                                         |
-| `0xF004–0xF007` | `CYCLES0–3` | R      | 32-bit cycle counter, little-endian; reading `CYCLES0` latches all four bytes |
+| Addr            | Name        | Access | Description                                                                                                                             |
+| --------------- | ----------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `0xF000`        | `ID`        | R      | `0x56` (`'V'`)                                                                                                                          |
+| `0xF001`        | `VERSION`   | R      | `0x10` (spec 1.0)                                                                                                                       |
+| `0xF002`        | `POWER`     | W      | writing `0xA5` powers the machine off                                                                                                   |
+| `0xF004–0xF007` | `CYCLES0–3` | R      | 32-bit cycle counter, little-endian; reading `CYCLES0` latches all four bytes and returns the low byte; the others return latched bytes |
 
 ### 8.2 Interrupt controller — `0xF010`
 
@@ -457,7 +476,9 @@ Arbitration: the lowest-numbered pending, enabled line wins.
 | `0xF025` | `COUNT_HI`  | R      | current count high byte                                                  |
 
 When `EN` goes from 0 to 1, `COUNT ← RELOAD` (a reload of 0 means 65 536).
-While `EN = 1`, `COUNT` decrements once per cycle. When it reaches 0:
+While `EN = 1`, `COUNT` decrements once per cycle, at the end of the cycle;
+the cycle containing the enabling `CTRL` write counts as the first tick, so the
+timer expires at the end of the `RELOAD`-th cycle starting with that one. When it reaches 0:
 `EXPIRED ← 1`; if `PERIODIC`, `COUNT ← RELOAD`, otherwise `EN ← 0`. IRQ line 0
 is asserted while `EXPIRED = 1` and `IE = 1`.
 
@@ -509,11 +530,18 @@ Capacity: 256 blocks × 256 bytes = 64 KiB.
 | `0xF066` | `CTRL`     | R/W    | bit0 `IE` completion-interrupt enable                                                 |
 | `0xF067` | `BLOCKS`   | R      | capacity in blocks, low byte (`0x00` = 256)                                           |
 
-Every command rewinds the buffer pointer to 0. READ and WRITE set `BUSY` for a
-fixed 64 cycles; on completion `BUSY ← 0` and `DONE ← 1` (or `ERROR ← 1`). IRQ
-line 2 is asserted while (`DONE` or `ERROR`) and `IE = 1`. Data moves only
-through the `DATA` port — there is no DMA, so the CPU itself copies every byte
-(programmed I/O).
+Every accepted command rewinds the buffer pointer to 0. READ and WRITE latch
+the block number at the moment the command is written and set `BUSY` for a
+fixed 64 cycles; on completion `BUSY ← 0` and `DONE ← 1` with `ERRCODE = 0`,
+or `ERROR ← 1` with an error code. IRQ line 2 is asserted while (`DONE` or
+`ERROR`) and `IE = 1`. Data moves only through the `DATA` port — there is no
+DMA, so the CPU itself copies every byte (programmed I/O).
+
+While `BUSY = 1` the buffer belongs to the controller: `DATA` reads return
+`0x00` and writes are ignored (the pointer does not move); a new command is
+rejected and only sets `ERRCODE = 3` (the in-flight operation continues and
+sets `ERRCODE` again when it completes). Writes to `BLOCK_LO`/`BLOCK_HI` are
+accepted but only affect the next command.
 
 ## 9. Hardware/software boundary
 
@@ -532,3 +560,14 @@ emulates a system call. Its only ways of changing guest state are: building ROM
 and disk images before power-on, the explicit debugger actions labelled as such
 in the UI (memory/register edits, "program memory" loads for bare-metal
 experiments), and device inputs (keys, switches).
+
+## 10. Power and reset
+
+- **Power on** clears RAM to `0x00`, programs the boot ROM image, inserts the
+  storage medium, resets every device and the CPU, and sets the cycle counter
+  to 0.
+- **Reset** (the reset button) resets the CPU and all device registers but
+  keeps RAM and the storage medium. It also restarts a machine that the guest
+  powered off through `SYS_POWER`, and leaves the machine-check state.
+- **Power off** by the guest (`SYS_POWER ← 0xA5`) stops the clock; nothing runs
+  until reset or power on.

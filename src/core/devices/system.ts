@@ -77,11 +77,10 @@ export class SystemControl implements Device<SystemControlState> {
       case 0x1:
         return SYS_VERSION_VALUE;
       case 0x4:
-        return this.cycles() & 0xff;
       case 0x5:
       case 0x6:
       case 0x7:
-        return this.latch[offset - 4]!;
+        return this.latch[offset - 4]!; // the debugger sees the latched value, never a torn read
       default:
         return 0;
     }

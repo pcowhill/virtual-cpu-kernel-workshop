@@ -311,7 +311,7 @@ export class Machine {
     if (this.seqException) entry.exception = this.seqException;
     if (this.seqFault) entry.fault = this.seqFault;
     if (kind === 'idle') {
-      const prev = this.trace.toArray().at(-1);
+      const prev = this.trace.peekLast();
       if (prev && prev.kind === 'idle' && prev.cycle + prev.cycles === entry.cycle) {
         prev.cycles += entry.cycles;
         prev.idleCycles = (prev.idleCycles ?? 1) + 1;
@@ -507,7 +507,7 @@ export class Machine {
 
   private describePendingException(): string {
     const ex = this.cpu.exception;
-    const last = this.events.toArray().at(-1);
+    const last = this.events.peekLast();
     if (ex) {
       return `${causeLabel(ex.cause)} at 0x${hex4(this.cpu.pc)}${ex.vector === VECTOR.MEMORY ? ` (address 0x${hex4(ex.faddr)})` : ''} — the CPU will enter vector ${ex.vector}`;
     }

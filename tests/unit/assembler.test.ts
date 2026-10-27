@@ -240,6 +240,16 @@ here: .byte lo(BASE), hi(BASE), SIZE, (1 << 4) | 2, ~0 & 0xFF, 10 / 3, 10 % 3, -
     ]);
   });
 
+  it('a label on a .org or .align line names the new address', () => {
+    const r = assemble('.org 0x10\nhere: .org 0x40\nNOP\naligned: .align 8\nNOP');
+    expect(r.symbols.find((x) => x.name === 'here')?.value).toBe(0x40);
+    expect(r.symbols.find((x) => x.name === 'aligned')?.value).toBe(0x48);
+  });
+
+  it('accepts .EQU in any case and upper-case 0X/0B prefixes', () => {
+    expect(bytesOf('A .Equ 0X10\n.EQU B, 0B11\n.byte A, B')).toEqual([0x10, 3]);
+  });
+
   it('character literals and escapes', () => {
     expect(bytesOf("MOV R0, #'\\n'\nMOV R1, #'\\x41'\nMOV R2, #';'")).toEqual([
       0x11, 0x00, 0x0a, 0x11, 0x10, 0x41, 0x11, 0x20, 0x3b,
@@ -290,6 +300,11 @@ describe('diagnostics', () => {
     ['missing include', '.include "nope.asm"', /cannot find include file/],
     ['local label without scope', '.x: NOP', /needs a preceding global label/],
     ['address space overflow', '.org 0xFFFF\nMOVP P0, #1', /past the end of the address space|MMIO/],
+    ['number without digits', 'MOV R0, #0x_', /malformed number '0x_'/],
+    ['binary number without digits', '.byte 0b', /malformed number/],
+    ['shift count too large', 'MOV R0, #(1 << 32)', /shift count 32 is out of range/],
+    ['shift overflow is range-checked', '.word 1 << 20', /word value 1048576 .* out of range/],
+    ['register-like label', 'R8: NOP', /reserved register name/],
   ];
   it.each(cases)('%s', (_n, src, re) => {
     const errs = errorsOf(

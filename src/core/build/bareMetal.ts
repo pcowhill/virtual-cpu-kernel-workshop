@@ -14,6 +14,11 @@ export function bareMetalConfig(segments: readonly MemorySegment[], disk: Uint8A
   const preload: MemorySegment[] = [];
   for (const seg of segments) {
     const end = seg.address + seg.bytes.length;
+    if (end > MEM.MMIO_START) {
+      throw new Error(
+        `cannot load bytes at 0x${MEM.MMIO_START.toString(16)}–0x${(end - 1).toString(16)}: that is device (MMIO) space`,
+      );
+    }
     const romEnd = Math.min(end, MEM.ROM_END + 1);
     if (seg.address <= MEM.ROM_END) {
       rom.push({ address: seg.address, bytes: seg.bytes.slice(0, romEnd - seg.address) });

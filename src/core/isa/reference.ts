@@ -64,7 +64,10 @@ export function generateIsaReferenceMarkdown(): string {
     out.push('| Opcode | Syntax | Bytes | Encoding | Mode | Flags | Cycles | Priv | Operation |');
     out.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
     for (const d of INSTRUCTIONS.filter((x) => x.group === g)) {
-      const syntax = syntaxSummary(d) + (d.aliases.length ? ` (alias ${d.aliases.join(', ')})` : '');
+      const syntax = (syntaxSummary(d) + (d.aliases.length ? ` (alias ${d.aliases.join(', ')})` : '')).replace(
+        /\|/g,
+        '\\|',
+      );
       out.push(
         `| \`0x${d.opcode.toString(16).toUpperCase().padStart(2, '0')}\` | \`${syntax}\` | ${d.length} | \`${encodingLayout(d)}\` | ${addressingMode(d)} | ${d.flags} | ${cycleCount(d)} | ${d.privileged ? 'yes' : '—'} | ${d.rtl.replace(/\|/g, '\\|')} |`,
       );

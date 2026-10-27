@@ -42,9 +42,9 @@ Encoding notation: `rrrr`/`ssss` = 8-bit register field (R0–R7), `wwww`/`bbbb`
 | `0x6C` | `JLE addr` | 3 | `01101100 lo8 hi8` | direct (absolute target) | - | 5 | — | if Z = 1 or N ≠ V (signed ≤): PC ← addr16 |
 | `0x6D` | `JGTU addr` | 3 | `01101101 lo8 hi8` | direct (absolute target) | - | 5 | — | if C = 0 and Z = 0 (unsigned >): PC ← addr16 |
 | `0x6E` | `JLEU addr` | 3 | `01101110 lo8 hi8` | direct (absolute target) | - | 5 | — | if C = 1 or Z = 1 (unsigned ≤): PC ← addr16 |
-| `0x70` | `JMP Pn|SP` | 2 | `01110000 wwww0000` | register-indirect target | - | 4 | — | PC ← Wa |
+| `0x70` | `JMP Pn\|SP` | 2 | `01110000 wwww0000` | register-indirect target | - | 4 | — | PC ← Wa |
 | `0x71` | `CALL addr` | 3 | `01110001 lo8 hi8` | direct (absolute target) | - | 9 | — | push PC.hi; push PC.lo; PC ← addr16 |
-| `0x72` | `CALL Pn|SP` | 2 | `01110010 wwww0000` | register-indirect target | - | 8 | — | push PC.hi; push PC.lo; PC ← Wa |
+| `0x72` | `CALL Pn\|SP` | 2 | `01110010 wwww0000` | register-indirect target | - | 8 | — | push PC.hi; push PC.lo; PC ← Wa |
 
 ## Data movement
 
@@ -53,9 +53,9 @@ Encoding notation: `rrrr`/`ssss` = 8-bit register field (R0–R7), `wwww`/`bbbb`
 | `0x10` | `MOV Rn, Rn` | 2 | `00010000 rrrrssss` | register | - | 4 | — | Ra ← Rb |
 | `0x11` | `MOV Rn, #imm8` | 3 | `00010001 rrrr0000 imm8` | immediate | - | 5 | — | Ra ← imm8 |
 | `0x12` | `LD Rn, [addr]` | 4 | `00010010 rrrr0000 lo8 hi8` | absolute | - | 8 | — | Ra ← M[addr16] |
-| `0x13` | `LD Rn, [Pn+off]` | 3 | `00010011 rrrrbbbb offset8` | base + offset / register-indirect | - | 7 | — | Ra ← M[Wb + off8] |
+| `0x13` | `LD Rn, [Pn\|SP+off]` | 3 | `00010011 rrrrbbbb offset8` | base + offset / register-indirect | - | 7 | — | Ra ← M[Wb + off8] |
 | `0x14` | `ST [addr], Rn` | 4 | `00010100 rrrr0000 lo8 hi8` | absolute | - | 7 | — | M[addr16] ← Ra |
-| `0x15` | `ST [Pn+off], Rn` | 3 | `00010101 rrrrbbbb offset8` | base + offset / register-indirect | - | 6 | — | M[Wb + off8] ← Ra |
+| `0x15` | `ST [Pn\|SP+off], Rn` | 3 | `00010101 rrrrbbbb offset8` | base + offset / register-indirect | - | 6 | — | M[Wb + off8] ← Ra |
 
 ## Stack
 
@@ -63,26 +63,26 @@ Encoding notation: `rrrr`/`ssss` = 8-bit register field (R0–R7), `wwww`/`bbbb`
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `0x16` | `PUSH Rn` | 2 | `00010110 rrrr0000` | register | - | 6 | — | SP ← SP − 1; M[SP] ← Ra |
 | `0x17` | `POP Rn` | 2 | `00010111 rrrr0000` | register | - | 6 | — | Ra ← M[SP]; SP ← SP + 1 |
-| `0x1E` | `PUSHP Pn|SP` | 2 | `00011110 wwww0000` | register | - | 8 | — | SP ← SP − 1; M[SP] ← Wa.hi; SP ← SP − 1; M[SP] ← Wa.lo |
-| `0x1F` | `POPP Pn|SP` | 2 | `00011111 wwww0000` | register | - | 8 | — | Wa.lo ← M[SP]; Wa.hi ← M[SP+1]; SP ← SP + 2 |
+| `0x1E` | `PUSHP Pn\|SP` | 2 | `00011110 wwww0000` | register | - | 8 | — | SP ← SP − 1; M[SP] ← Wa.hi; SP ← SP − 1; M[SP] ← Wa.lo |
+| `0x1F` | `POPP Pn\|SP` | 2 | `00011111 wwww0000` | register | - | 8 | — | Wa.lo ← M[SP]; Wa.hi ← M[SP+1]; SP ← SP + 2 |
 
 ## 16-bit data movement
 
 | Opcode | Syntax | Bytes | Encoding | Mode | Flags | Cycles | Priv | Operation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `0x18` | `MOVP Pn|SP, Pn|SP` | 2 | `00011000 wwwwbbbb` | register | - | 4 | — | Wa ← Wb |
-| `0x19` | `MOVP Pn|SP, #imm16` | 4 | `00011001 wwww0000 lo8 hi8` | immediate | - | 6 | — | Wa ← imm16 |
-| `0x1A` | `LDW Pn|SP, [addr]` | 4 | `00011010 wwww0000 lo8 hi8` | absolute | - | 10 | — | Wa.lo ← M[addr]; Wa.hi ← M[addr+1] |
-| `0x1B` | `LDW Pn|SP, [Pn+off]` | 3 | `00011011 wwwwbbbb offset8` | base + offset / register-indirect | - | 9 | — | Wa.lo ← M[Wb+off]; Wa.hi ← M[Wb+off+1] |
-| `0x1C` | `STW [addr], Pn|SP` | 4 | `00011100 wwww0000 lo8 hi8` | absolute | - | 9 | — | M[addr] ← Wa.lo; M[addr+1] ← Wa.hi |
-| `0x1D` | `STW [Pn+off], Pn|SP` | 3 | `00011101 wwwwbbbb offset8` | base + offset / register-indirect | - | 8 | — | M[Wb+off] ← Wa.lo; M[Wb+off+1] ← Wa.hi |
+| `0x18` | `MOVP Pn\|SP, Pn\|SP` | 2 | `00011000 wwwwbbbb` | register | - | 4 | — | Wa ← Wb |
+| `0x19` | `MOVP Pn\|SP, #imm16` | 4 | `00011001 wwww0000 lo8 hi8` | immediate | - | 6 | — | Wa ← imm16 |
+| `0x1A` | `LDW Pn\|SP, [addr]` | 4 | `00011010 wwww0000 lo8 hi8` | absolute | - | 10 | — | Wa.lo ← M[addr]; Wa.hi ← M[addr+1] |
+| `0x1B` | `LDW Pn\|SP, [Pn\|SP+off]` | 3 | `00011011 wwwwbbbb offset8` | base + offset / register-indirect | - | 9 | — | Wa.lo ← M[Wb+off]; Wa.hi ← M[Wb+off+1] |
+| `0x1C` | `STW [addr], Pn\|SP` | 4 | `00011100 wwww0000 lo8 hi8` | absolute | - | 9 | — | M[addr] ← Wa.lo; M[addr+1] ← Wa.hi |
+| `0x1D` | `STW [Pn\|SP+off], Pn\|SP` | 3 | `00011101 wwwwbbbb offset8` | base + offset / register-indirect | - | 8 | — | M[Wb+off] ← Wa.lo; M[Wb+off+1] ← Wa.hi |
 
 ## Privileged control registers
 
 | Opcode | Syntax | Bytes | Encoding | Mode | Flags | Cycles | Priv | Operation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `0x20` | `MFC Pn|SP, CR` | 2 | `00100000 wwwwcccc` | register | - | 4 | yes | Wa ← CRb |
-| `0x21` | `MTC CR, Pn|SP` | 2 | `00100001 ccccbbbb` | register | CZNV | 4 | yes | CRa ← Wb |
+| `0x20` | `MFC Pn\|SP, CR` | 2 | `00100000 wwwwcccc` | register | - | 4 | yes | Wa ← CRb |
+| `0x21` | `MTC CR, Pn\|SP` | 2 | `00100001 ccccbbbb` | register | CZNV | 4 | yes | CRa ← Wb |
 
 ## 8-bit arithmetic and logic
 
@@ -124,14 +124,14 @@ Encoding notation: `rrrr`/`ssss` = 8-bit register field (R0–R7), `wwww`/`bbbb`
 
 | Opcode | Syntax | Bytes | Encoding | Mode | Flags | Cycles | Priv | Operation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `0x50` | `INCP Pn|SP` | 2 | `01010000 wwww0000` | register | Z | 5 | — | Wa ← Wa + 1 |
-| `0x51` | `DECP Pn|SP` | 2 | `01010001 wwww0000` | register | Z | 5 | — | Wa ← Wa − 1 |
-| `0x52` | `ADDP Pn|SP, Pn|SP` | 2 | `01010010 wwwwbbbb` | register | CZNV | 8 | — | Wa ← Wa + Wb |
-| `0x53` | `ADDP Pn|SP, #imm16` | 4 | `01010011 wwww0000 lo8 hi8` | immediate | CZNV | 10 | — | Wa ← Wa + imm16 |
-| `0x54` | `ADDP Pn|SP, Rn` | 2 | `01010100 wwwwssss` | register | CZNV | 8 | — | Wa ← Wa + zext(Rb) |
-| `0x55` | `SUBP Pn|SP, Pn|SP` | 2 | `01010101 wwwwbbbb` | register | CZNV | 8 | — | Wa ← Wa − Wb |
-| `0x56` | `CMPP Pn|SP, Pn|SP` | 2 | `01010110 wwwwbbbb` | register | CZNV | 8 | — | flags ← Wa − Wb |
-| `0x57` | `CMPP Pn|SP, #imm16` | 4 | `01010111 wwww0000 lo8 hi8` | immediate | CZNV | 10 | — | flags ← Wa − imm16 |
+| `0x50` | `INCP Pn\|SP` | 2 | `01010000 wwww0000` | register | Z | 5 | — | Wa ← Wa + 1 |
+| `0x51` | `DECP Pn\|SP` | 2 | `01010001 wwww0000` | register | Z | 5 | — | Wa ← Wa − 1 |
+| `0x52` | `ADDP Pn\|SP, Pn\|SP` | 2 | `01010010 wwwwbbbb` | register | CZNV | 8 | — | Wa ← Wa + Wb |
+| `0x53` | `ADDP Pn\|SP, #imm16` | 4 | `01010011 wwww0000 lo8 hi8` | immediate | CZNV | 10 | — | Wa ← Wa + imm16 |
+| `0x54` | `ADDP Pn\|SP, Rn` | 2 | `01010100 wwwwssss` | register | CZNV | 8 | — | Wa ← Wa + zext(Rb) |
+| `0x55` | `SUBP Pn\|SP, Pn\|SP` | 2 | `01010101 wwwwbbbb` | register | CZNV | 8 | — | Wa ← Wa − Wb |
+| `0x56` | `CMPP Pn\|SP, Pn\|SP` | 2 | `01010110 wwwwbbbb` | register | CZNV | 8 | — | flags ← Wa − Wb |
+| `0x57` | `CMPP Pn\|SP, #imm16` | 4 | `01010111 wwww0000 lo8 hi8` | immediate | CZNV | 10 | — | flags ← Wa − imm16 |
 
 ## Micro-programs
 
@@ -264,7 +264,7 @@ Each line is one clock cycle. `a`/`b` are the register-byte fields.
 7. MEM READ: MDR ← M[MAR]
 8. WRITE BACK: Ra ← MDR
 
-### `0x13` LD Rn, [Pn+off] — Load byte from base register + offset
+### `0x13` LD Rn, [Pn|SP+off] — Load byte from base register + offset
 
 *Notes:* Offset is unsigned (0–255); the address wraps modulo 65 536.
 
@@ -292,7 +292,7 @@ Each line is one clock cycle. `a`/`b` are the register-byte fields.
 6. ADDRESS: MAR ← IMM; MDR ← Ra
 7. MEM WRITE: M[MAR] ← MDR
 
-### `0x15` ST [Pn+off], Rn — Store byte to base register + offset
+### `0x15` ST [Pn|SP+off], Rn — Store byte to base register + offset
 
 *Errors:* illegal-instruction fault (vector 1) for invalid register fields; memory fault (vector 3) if a data access is not permitted; memory fault (vector 3) if an instruction byte cannot be fetched.
 
@@ -360,7 +360,7 @@ Each line is one clock cycle. `a`/`b` are the register-byte fields.
 9. MEM READ: MDR ← M[MAR]; T.hi ← MDR
 10. WRITE BACK: Wa ← T
 
-### `0x1B` LDW Pn|SP, [Pn+off] — Load 16-bit word from base register + offset
+### `0x1B` LDW Pn|SP, [Pn|SP+off] — Load 16-bit word from base register + offset
 
 *Errors:* illegal-instruction fault (vector 1) for invalid register fields; memory fault (vector 3) if a data access is not permitted; memory fault (vector 3) if an instruction byte cannot be fetched.
 
@@ -390,7 +390,7 @@ Each line is one clock cycle. `a`/`b` are the register-byte fields.
 8. ADDRESS: MAR ← MAR + 1; MDR ← T.hi
 9. MEM WRITE: M[MAR] ← MDR
 
-### `0x1D` STW [Pn+off], Pn|SP — Store 16-bit word to base register + offset
+### `0x1D` STW [Pn|SP+off], Pn|SP — Store 16-bit word to base register + offset
 
 *Notes:* If the second byte faults, the first byte has already been written.
 

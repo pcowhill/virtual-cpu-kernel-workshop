@@ -324,4 +324,88 @@ h_kbd: LD R5, [0xF040]
     expect(m.cpu.r[5]).toBe(0x55);
     expect(m.cpu.r[3]).toBe(0x33);
   });
+
+  it('an interrupt taken in user mode switches to KSP and RTI returns to the user stack', () => {
+    const { m, r } = userProgram(
+      'MOVP P0, #0x1234\nPUSHP P0\nuloop: INC R1\nJMP uloop',
+      DEFAULT_HANDLERS.replace(
+        'h_timer: MOV R7, #8',
+        'h_timer: MOV R7, #8\n         MOV R6, #0\n         ST [0xF020], R6      ; stop the timer',
+      ),
+    );
+    // Arm a one-shot timer and enable its line before the program starts
+    // (test setup through the device interface).
+    m.timer.write(2, 0x2c);
+    m.timer.write(3, 0x01); // RELOAD = 300
+    m.timer.write(0, 0x03); // EN | IE, one-shot
+    m.pic.write(1, 0x01);
+    m.run(3000);
+    const ex = m.events.toArray().filter((e) => e.type === 'exception');
+    expect(ex).toHaveLength(1);
+    expect(ex[0]).toMatchObject({ vector: 8, cause: 0x20, fromUser: true });
+    expect(ex[0]!.fromPc).toBeGreaterThanOrEqual(sym(r, 'uloop'));
+    expect(m.cpu.cause).toBe(0x20);
+    expect(m.cpu.faddr).toBe(0); // FADDR untouched by non-memory exceptions
+    const rti = m.events.toArray().find((e) => e.type === 'rti' && e.cycle > ex[0]!.cycle)!;
+    expect(rti.toUser).toBe(true);
+    expect(m.cpu.supervisor).toBe(false);
+    expect(m.cpu.usp).toBe(0x6ffe); // the PUSHP before the interrupt, nothing else
+    expect(m.bus.peekWord(0x6ffe)).toBe(0x1234);
+    expect(m.cpu.ksp).toBe(0x3000);
+  });
+
+  it('a pending interrupt is taken immediately after RTI sets I, before any further instruction', () => {
+    // User code runs with I = 1. The syscall handler (I = 0) waits until the
+    // timer line is pending, then returns: the IRQ must be taken at once.
+    const { m, r } = userProgram(
+      'SYS\nafter: MOV R2, #0x77\nhere: JMP here',
+      DEFAULT_HANDLERS.replace(
+        'h_sys:   MOV R7, #4\n         RTI',
+        `h_sys:   MOV R7, #4
+         MOV R0, #10
+         ST [0xF022], R0
+         MOV R0, #0
+         ST [0xF023], R0
+         MOV R0, #0x03
+         ST [0xF020], R0      ; one-shot timer
+         MOV R0, #0x01
+         ST [0xF011], R0
+.w:      LD R0, [0xF010]
+         AND R0, #1
+         JEQ .w               ; wait until line 0 is pending (I = 0: not taken)
+         RTI`,
+      ),
+    );
+    m.run(3000);
+    const evs = m.events.toArray().filter((e) => e.type === 'exception' || e.type === 'rti');
+    const rtiIdx = evs.findIndex((e) => e.type === 'rti' && e.toUser && e.pc === sym(r, 'after'));
+    expect(rtiIdx).toBeGreaterThan(0);
+    const next = evs[rtiIdx + 1]!;
+    expect(next).toMatchObject({ type: 'exception', vector: 8, fromPc: sym(r, 'after') });
+    expect(next.cycle - evs[rtiIdx]!.cycle).toBe(12); // exactly one exception-entry sequence later
+  });
+
+  it('FADDR reports the exact byte when an instruction straddles ULIMIT', () => {
+    const { m } = userProgram(`
+      JMP 0x7FFE`);
+    // Place a 4-byte instruction (MOVP P0, #imm16) at 0x7FFE; bytes 0x8000+ are outside the window.
+    m.debugPoke(0x7ffe, 0x19);
+    m.debugPoke(0x7fff, 0x00);
+    m.run(2000);
+    expect(m.cpu.cause).toBe(CAUSE.FETCH_VIOLATION);
+    expect(m.cpu.faddr).toBe(0x8000);
+    expect(m.bus.peekWord(m.cpu.ksp + 1)).toBe(0x7ffe); // saved PC = first byte of the instruction
+  });
+
+  it('FADDR keeps the last memory fault address across later non-memory exceptions', () => {
+    const { m } = userProgram('LD R0, [0x2000]');
+    m.run(1000);
+    expect(m.cpu.faddr).toBe(0x2000);
+    // Now a syscall from supervisor code: FADDR must not change.
+    m.cpu.status = 'running';
+    m.cpu.trap(CAUSE.SYSCALL);
+    m.stepInstruction();
+    expect(m.cpu.cause).toBe(CAUSE.SYSCALL);
+    expect(m.cpu.faddr).toBe(0x2000);
+  });
 });

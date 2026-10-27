@@ -65,18 +65,15 @@ function tokenize(src: string): Tok[] {
       continue;
     }
     if (/[0-9]/.test(ch)) {
-      const m = /^(0x[0-9a-fA-F_]+|0b[01_]+|[0-9][0-9_]*)/.exec(src.slice(i))!;
-      const text = m[0].replace(/_/g, '');
-      if (/[a-zA-Z]/.test(src[i + m[0].length] ?? '')) {
-        throw new ExprError(`malformed number '${src.slice(i).split(/[^0-9a-zA-Z_]/)[0]}'`);
-      }
-      const v = text.startsWith('0x')
-        ? parseInt(text.slice(2), 16)
-        : text.startsWith('0b')
-          ? parseInt(text.slice(2), 2)
-          : parseInt(text, 10);
+      const word = /^[0-9][0-9a-zA-Z_]*/.exec(src.slice(i))![0];
+      const text = word.replace(/_/g, '').toLowerCase();
+      let v = NaN;
+      if (/^0x[0-9a-f]+$/.test(text)) v = parseInt(text.slice(2), 16);
+      else if (/^0b[01]+$/.test(text)) v = parseInt(text.slice(2), 2);
+      else if (/^[0-9]+$/.test(text)) v = parseInt(text, 10);
+      if (!Number.isFinite(v)) throw new ExprError(`malformed number '${word}'`);
       out.push({ t: 'num', v });
-      i += m[0].length;
+      i += word.length;
       continue;
     }
     if (ch === "'") {
@@ -230,9 +227,10 @@ export function evaluate(e: Expr, ctx: EvalContext, unresolved?: string[]): numb
         case '^':
           return l ^ r;
         case '<<':
-          return l << r;
         case '>>':
-          return l >> r;
+          if (r < 0 || r > 31) throw new ExprError(`shift count ${r} is out of range (0…31)`);
+          // Exact arithmetic (no 32-bit wrap-around), so overflow is caught by range checks.
+          return e.op === '<<' ? l * 2 ** r : Math.floor(l / 2 ** r);
         default:
           throw new ExprError(`unknown operator ${e.op}`);
       }

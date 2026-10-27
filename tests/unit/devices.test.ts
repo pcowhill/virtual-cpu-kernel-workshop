@@ -210,3 +210,35 @@ copy: LD R0, [0xF064]
     expect(() => m.debugPoke(0xf050, 1)).toThrow();
   });
 });
+
+describe('storage while busy', () => {
+  it('latches the block number when the command is written', () => {
+    const s = new Storage();
+    const img = new Uint8Array(65536);
+    img[5 * 256] = 0x55;
+    img[9 * 256] = 0x99;
+    s.loadImage(img);
+    s.write(2, 5);
+    s.write(0, 1);
+    s.write(2, 9); // changing BLOCK while busy affects only the next command
+    for (let i = 0; i < 64; i++) s.tick();
+    expect(s.read(4)).toBe(0x55);
+  });
+
+  it('rejects a command while busy without disturbing the operation', () => {
+    const s = new Storage();
+    s.write(2, 1);
+    s.write(0, 1);
+    s.write(0, 2); // rejected
+    expect(s.read(5)).toBe(3);
+    expect(s.read(1)).toBe(DISK_STATUS.BUSY);
+    s.write(4, 0x77); // DATA write ignored while busy
+    expect(s.read(4)).toBe(0); // DATA read returns 0 while busy, pointer unchanged
+    for (let i = 0; i < 64; i++) s.tick();
+    expect(s.read(1)).toBe(DISK_STATUS.DONE);
+    expect(s.read(5)).toBe(0); // completion reports its own status
+    expect(s.ptr).toBe(0);
+    expect(s.writes).toBe(0);
+    expect(s.reads).toBe(1);
+  });
+});

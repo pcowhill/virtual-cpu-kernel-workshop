@@ -15,6 +15,7 @@ export interface StorageState {
   ctrl: number;
   busyCycles: number;
   pendingCmd: number;
+  pendingBlock: number;
   reads: number;
   writes: number;
 }
@@ -36,6 +37,8 @@ export class Storage implements Device<StorageState>, ClockedDevice, InterruptSo
   ctrl = 0;
   busyCycles = 0;
   pendingCmd = 0;
+  /** Block number latched when the in-flight command was issued. */
+  pendingBlock = 0;
   reads = 0;
   writes = 0;
 
@@ -49,8 +52,13 @@ export class Storage implements Device<StorageState>, ClockedDevice, InterruptSo
     this.ctrl = 0;
     this.busyCycles = 0;
     this.pendingCmd = 0;
+    this.pendingBlock = 0;
     this.reads = 0;
     this.writes = 0;
+  }
+
+  private get busy(): boolean {
+    return (this.status & DISK_STATUS.BUSY) !== 0;
   }
 
   /** Host: insert a medium (e.g. a freshly built disk image). */
@@ -68,7 +76,7 @@ export class Storage implements Device<StorageState>, ClockedDevice, InterruptSo
       case 0x3:
         return this.block >> 8;
       case 0x4:
-        return this.buffer[this.ptr]!;
+        return this.busy ? 0 : this.buffer[this.ptr]!;
       case 0x5:
         return this.errcode;
       case 0x6:
@@ -82,6 +90,7 @@ export class Storage implements Device<StorageState>, ClockedDevice, InterruptSo
 
   read(offset: number): number {
     if (offset === 0x4) {
+      if (this.busy) return 0; // the buffer belongs to the controller while BUSY
       const v = this.buffer[this.ptr]!;
       this.ptr = (this.ptr + 1) & 0xff;
       return v;
@@ -104,6 +113,7 @@ export class Storage implements Device<StorageState>, ClockedDevice, InterruptSo
         this.block = (this.block & 0x00ff) | (value << 8);
         break;
       case 0x4:
+        if (this.busy) break; // ignored while BUSY
         this.buffer[this.ptr] = value;
         this.ptr = (this.ptr + 1) & 0xff;
         break;
@@ -121,8 +131,10 @@ export class Storage implements Device<StorageState>, ClockedDevice, InterruptSo
   }
 
   private command(cmd: number): void {
-    if (this.status & DISK_STATUS.BUSY) {
-      // The in-flight operation continues; the new command is rejected.
+    if (this.busy) {
+      // The in-flight operation continues unaffected; the new command is
+      // rejected and only ERRCODE records it (it is overwritten when the
+      // in-flight operation completes).
       this.errcode = DISK_ERR.BUSY;
       return;
     }
@@ -135,6 +147,7 @@ export class Storage implements Device<StorageState>, ClockedDevice, InterruptSo
       return;
     }
     this.pendingCmd = cmd;
+    this.pendingBlock = this.block; // latched now; later BLOCK writes affect the next command
     this.busyCycles = DISK_LATENCY_CYCLES;
     this.status |= DISK_STATUS.BUSY;
   }
@@ -144,11 +157,12 @@ export class Storage implements Device<StorageState>, ClockedDevice, InterruptSo
     if (--this.busyCycles > 0) return;
     const cmd = this.pendingCmd;
     this.pendingCmd = 0;
-    if (this.block >= DISK_BLOCK_COUNT) {
+    if (this.pendingBlock >= DISK_BLOCK_COUNT) {
       this.fail(DISK_ERR.BAD_BLOCK);
       return;
     }
-    const start = this.block * DISK_BLOCK_SIZE;
+    this.errcode = DISK_ERR.NONE;
+    const start = this.pendingBlock * DISK_BLOCK_SIZE;
     if (cmd === DISK_CMD.READ) {
       this.buffer.set(this.image.subarray(start, start + DISK_BLOCK_SIZE));
       this.reads++;
@@ -174,6 +188,7 @@ export class Storage implements Device<StorageState>, ClockedDevice, InterruptSo
       ctrl: this.ctrl,
       busyCycles: this.busyCycles,
       pendingCmd: this.pendingCmd,
+      pendingBlock: this.pendingBlock,
       reads: this.reads,
       writes: this.writes,
     };
@@ -189,6 +204,7 @@ export class Storage implements Device<StorageState>, ClockedDevice, InterruptSo
     this.ctrl = s.ctrl;
     this.busyCycles = s.busyCycles;
     this.pendingCmd = s.pendingCmd;
+    this.pendingBlock = s.pendingBlock;
     this.reads = s.reads;
     this.writes = s.writes;
   }

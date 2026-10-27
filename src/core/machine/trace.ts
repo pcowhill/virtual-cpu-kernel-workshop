@@ -88,6 +88,13 @@ export class Ring<T> {
     return this.buf.length;
   }
 
+  /** The most recently pushed item, in O(1). */
+  peekLast(): T | undefined {
+    if (this.buf.length === 0) return undefined;
+    if (this.buf.length < this.capacity) return this.buf[this.buf.length - 1];
+    return this.buf[(this.start + this.capacity - 1) % this.capacity];
+  }
+
   /** Items oldest → newest. */
   toArray(): T[] {
     return this.buf.slice(this.start).concat(this.buf.slice(0, this.start));

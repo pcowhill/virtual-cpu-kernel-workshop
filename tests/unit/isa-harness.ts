@@ -121,9 +121,34 @@ export function normalizeFlags(f: string): string {
 /** Execute the case and return a list of mismatches (empty = pass). */
 export function runCase(c: IsaCase): { m: Machine; problems: string[] } {
   const { m, labels, startCycle } = prepare(c);
+  const before = new Map(ALL_REGS.map((r) => [r, getReg(m, r)]));
+  const memBefore = m.bus.mem.slice();
   const steps = c.steps ?? 1;
   for (let i = 0; i < steps; i++) m.stepInstruction();
   const problems: string[] = [];
+  // Side effects: nothing may change except what the case expects.
+  const allowed = new Set<string>(['PC']);
+  for (const name of Object.keys(c.expect.regs ?? {})) {
+    const up = name.toUpperCase();
+    if (/^P[0-3]$/.test(up)) {
+      allowed.add(`R${Number(up[1]) * 2}`);
+      allowed.add(`R${Number(up[1]) * 2 + 1}`);
+    } else if (up === 'SP') {
+      allowed.add(c.user ? 'USP' : 'KSP');
+    } else allowed.add(up);
+  }
+  if (c.expect.flags !== undefined) allowed.add('PSW');
+  for (const r of ALL_REGS) {
+    if (!allowed.has(r) && getReg(m, r) !== before.get(r)) {
+      problems.push(`unexpected change of ${r}: 0x${before.get(r)!.toString(16)} → 0x${getReg(m, r).toString(16)}`);
+    }
+  }
+  for (let a = 0; a < 0xf000; a++) {
+    if (m.bus.mem[a] !== memBefore[a] && !(c.expect.mem && a in c.expect.mem)) {
+      problems.push(`unexpected memory write at 0x${a.toString(16)}`);
+      break;
+    }
+  }
   const e = c.expect;
   for (const [name, v] of Object.entries(e.regs ?? {})) {
     const got = getReg(m, name);
@@ -164,3 +189,23 @@ export function runCase(c: IsaCase): { m: Machine; problems: string[] } {
 }
 
 export const ROM_END = MEM.ROM_END;
+
+const ALL_REGS = [
+  'R0',
+  'R1',
+  'R2',
+  'R3',
+  'R4',
+  'R5',
+  'R6',
+  'R7',
+  'KSP',
+  'USP',
+  'PSW',
+  'VBASE',
+  'UBASE',
+  'ULIMIT',
+  'CAUSE',
+  'FADDR',
+  'KSCRATCH',
+];

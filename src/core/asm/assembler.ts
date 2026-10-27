@@ -229,7 +229,7 @@ function parseLine(file: string, lineNo: number, source: string): Stmt {
   pos += word.length;
   const rest = code.slice(pos);
   // NAME = expr   |   NAME .equ expr
-  const equMatch = /^\s*(=|\.equ\b|\.EQU\b)\s*(.*)$/.exec(rest);
+  const equMatch = /^\s*(=|\.equ\b)\s*(.*)$/i.exec(rest);
   if (equMatch && !word.startsWith('.')) {
     stmt.equ = { name: word, expr: equMatch[2]!.trim(), column: wordCol };
     return stmt;
@@ -340,7 +340,7 @@ export function syntaxSummary(d: InstructionDef): string {
       case 'abs':
         return '[addr]';
       case 'mem':
-        return '[Pn+off]';
+        return '[Pn|SP+off]';
       case 'addr':
         return 'addr';
     }
@@ -492,7 +492,7 @@ export function assemble(source: string, options: AssembleOptions = {}): Assembl
     expr: Expr | null,
     column: number,
   ) => {
-    if (RESERVED.has(name.toUpperCase())) {
+    if (RESERVED.has(name.toUpperCase()) || /^[RP]\d+$/i.test(name)) {
       err(st.file, st.line, `'${name}' is a reserved register name and cannot be used as a symbol`, column);
       return;
     }
@@ -529,6 +529,12 @@ export function assemble(source: string, options: AssembleOptions = {}): Assembl
   for (const st of stmts) {
     st.address = pc;
     try {
+      // Labels on a .org or .align line name the address *after* the directive.
+      if (st.op === '.org' || st.op === '.align') {
+        const target = sizeDirective(st, (text, what) => evalNow(st, text, what));
+        pc = st.op === '.org' ? target : alignUp(pc, evalNow(st, st.operands[0]!.text, '.align boundary'));
+        st.address = pc;
+      }
       for (const l of st.labels) {
         let name = l.name;
         if (name.startsWith('.')) {
@@ -544,19 +550,10 @@ export function assemble(source: string, options: AssembleOptions = {}): Assembl
         continue;
       }
       if (!st.op) continue;
-      if (st.op.startsWith('.')) {
+      if (st.op === '.org' || st.op === '.align') {
+        st.size = 0;
+      } else if (st.op.startsWith('.')) {
         st.size = sizeDirective(st, (text, what) => evalNow(st, text, what));
-        if (st.op === '.org') {
-          pc = st.size;
-          st.size = 0;
-          st.address = pc;
-        } else if (st.op === '.align') {
-          const n = evalNow(st, st.operands[0]!.text, '.align boundary');
-          const aligned = Math.ceil(pc / n) * n;
-          st.size = 0;
-          pc = aligned;
-          st.address = pc;
-        }
       } else {
         const candidates = MNEMONIC_TABLE.get(st.op);
         if (!candidates) throw new AsmError(`unknown instruction '${st.op}'.${suggestMnemonic(st.op)}`, st.opColumn);
@@ -744,6 +741,10 @@ export function assemble(source: string, options: AssembleOptions = {}): Assembl
 // ---------------------------------------------------------------------------
 // Directives
 // ---------------------------------------------------------------------------
+
+function alignUp(pc: number, n: number): number {
+  return Math.ceil(pc / n) * n;
+}
 
 function sizeDirective(st: Stmt, evalNow: (text: string, what: string) => number): number {
   const ops = st.operands;
