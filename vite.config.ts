@@ -1,6 +1,7 @@
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
+import { serviceWorker } from './scripts/service-worker';
 
 // Served from https://<owner>.github.io/virtual-cpu-kernel-workshop/ on GitHub Pages.
 // BASE_PATH can override it (e.g. "/" for local preview).
@@ -8,7 +9,7 @@ const base = process.env.BASE_PATH ?? '/virtual-cpu-kernel-workshop/';
 
 export default defineConfig({
   base,
-  plugins: [vue()],
+  plugins: [vue(), serviceWorker()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },

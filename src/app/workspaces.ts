@@ -38,6 +38,8 @@ function createWorkspaces() {
   /** What "unsaved changes" compares: sources, build configuration and notes. */
   const contentKey = computed(() => `${hashSources(s.project)}|${current.name}|${current.notes}`);
   const dirty = computed(() => savedKey.value !== contentKey.value);
+  // An untouched new workspace has nothing to lose.
+  savedKey.value = contentKey.value;
 
   async function refresh(): Promise<void> {
     try {
@@ -156,7 +158,7 @@ function createWorkspaces() {
     current.notes = '';
     current.createdAt = Date.now();
     current.snapshots = [];
-    savedKey.value = null;
+    savedKey.value = contentKey.value;
     s.selectedFile.value = s.project.bareMain;
     s.buildAndLoad();
   }

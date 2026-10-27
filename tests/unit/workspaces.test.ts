@@ -68,10 +68,14 @@ describe('workspace export/import', () => {
     expect(JSON.stringify(c2.machine.snapshot())).toBe(expected);
   });
 
-  const valid = () => JSON.parse(exportWorkspace(workspace(osController().c.machine.snapshot(), null))) as {
-    workspace: Record<string, unknown> & { project: { files: Record<string, string> }; machine: { machine: MachineSnapshot } };
-    version: number;
-  };
+  const valid = () =>
+    JSON.parse(exportWorkspace(workspace(osController().c.machine.snapshot(), null))) as {
+      workspace: Record<string, unknown> & {
+        project: { files: Record<string, string> };
+        machine: { machine: MachineSnapshot };
+      };
+      version: number;
+    };
   const reject = (mutate: (d: ReturnType<typeof valid>) => void, msg: RegExp) => {
     const d = valid();
     mutate(d);
@@ -85,14 +89,33 @@ describe('workspace export/import', () => {
     reject((d) => (d.workspace.project.files = {}), /files is empty/);
     reject((d) => (d.workspace.project.files['../../etc/passwd.asm'] = 'x'), /invalid source file name/);
     reject((d) => (d.workspace.project.files['a.js'] = 'alert(1)'), /invalid source file name/);
-    reject((d) => ((d.workspace.project as unknown as { bareMain: string }).bareMain = 'missing.asm'), /not one of the files/);
+    reject(
+      (d) => ((d.workspace.project as unknown as { bareMain: string }).bareMain = 'missing.asm'),
+      /not one of the files/,
+    );
     reject((d) => ((d.workspace['debug'] as { breakpoints: unknown[] }).breakpoints = [70000]), /breakpoint 1/);
     reject((d) => ((d.workspace.machine.machine.cpu.r as number[])[0] = 300), /cpu\.r\[0\]/);
     reject((d) => ((d.workspace.machine.machine.cpu as { pc: unknown }).pc = '0x100'), /wrong type/);
     reject((d) => ((d.workspace.machine.machine as unknown as { extra: number }).extra = 1), /not part of the format/);
-    reject((d) => ((d.workspace.machine.machine.cpu as { programId: unknown }).programId = 'op:nonsense'), /cannot be restored|does not accept/);
+    reject(
+      (d) => ((d.workspace.machine.machine.cpu as { programId: unknown }).programId = 'op:nonsense'),
+      /cannot be restored|does not accept/,
+    );
     reject((d) => (d.workspace.machine.machine.memory = 'AAAA'), /cannot be restored|does not accept/);
     reject((d) => ((d.workspace.machine.machine as unknown as { format: string }).format = 'x'), /not a version 1/);
+  });
+
+  it('accepts snapshots of a halted machine and of a machine at power-on', () => {
+    const p = defaultProject();
+    const c = new MachineController();
+    c.handle({ type: 'load', request: buildProject(p).load! }, 0);
+    const atPowerOn = c.machine.snapshot();
+    expect(atPowerOn.cpu.programId).not.toBeNull();
+    expect(validateSnapshot(JSON.parse(JSON.stringify(atPowerOn)))).toEqual(atPowerOn);
+    c.request({ type: 'runDeterministic', cycles: 100_000 });
+    const halted = c.machine.snapshot();
+    expect(halted.cpu.programId).toBeNull();
+    expect(validateSnapshot(JSON.parse(JSON.stringify(halted)))).toEqual(halted);
   });
 
   it('accepts a snapshot taken mid-instruction with a pending exception', () => {

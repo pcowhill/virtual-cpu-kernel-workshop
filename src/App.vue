@@ -4,6 +4,8 @@ import { useStore, type LabId } from './app/store';
 import ControlBar from './ui/components/ControlBar.vue';
 import LessonGuide from './ui/components/LessonGuide.vue';
 import { useLessons } from './app/lessons';
+import { useWorkspaces } from './app/workspaces';
+import { applyUpdate, offlineReady, updateAvailable } from './pwa';
 import RegisterPanel from './ui/components/RegisterPanel.vue';
 import TerminalPanel from './ui/components/TerminalPanel.vue';
 import StartLab from './ui/labs/StartLab.vue';
@@ -23,6 +25,8 @@ import WorkspacesLab from './ui/labs/WorkspacesLab.vue';
 
 const s = useStore();
 const lessons = useLessons();
+// Created at startup so that "unsaved changes" is measured from the initial sources.
+useWorkspaces();
 
 const LABS: { id: LabId; label: string; icon: string; component: Component; group: string }[] = [
   { id: 'start', label: 'Start', icon: '⌂', component: StartLab, group: 'Workbench' },
@@ -92,6 +96,23 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
         <button class="btn small" @click="s.buildAndLoad()">Rebuild &amp; reload</button>
       </span>
       <div class="spacer" />
+      <button
+        v-if="updateAvailable"
+        class="btn small primary"
+        title="A new version has been downloaded. Reloading switches to it (save your workspace first)."
+        data-testid="update-available"
+        @click="applyUpdate"
+      >
+        Update available · reload
+      </button>
+      <span
+        v-else-if="offlineReady"
+        class="chip ok"
+        title="Every file the workbench needs is stored in this browser: it keeps working without a network connection."
+        data-testid="offline-ready"
+      >
+        works offline
+      </span>
       <label class="theme">
         <span class="sr-only">Theme</span>
         <select v-model="s.theme.value" aria-label="Colour theme">

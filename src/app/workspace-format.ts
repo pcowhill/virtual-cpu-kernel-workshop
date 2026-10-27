@@ -201,7 +201,8 @@ const LIST_ELEMENT: Record<string, unknown> = {
 
 /** Same JSON shape as the reference: same keys and value types, recursively. */
 function sameShape(x: unknown, ref: unknown, where: string, path: string): void {
-  if (path in NULLABLE && x !== null) {
+  if (path in NULLABLE) {
+    if (x === null) return;
     if (NULLABLE[path] === 'string') {
       str(x, where, 200);
       return;
