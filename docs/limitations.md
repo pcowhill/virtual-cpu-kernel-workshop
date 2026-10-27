@@ -63,8 +63,10 @@ does. Nothing below is approximated or animated by the workbench.
 - **OS views depend on the kernel's data layout.** They find the process table through kernel symbols
   (`proc_table`, `PCB_SIZE` and the field offsets). If you rename or remove those in the kernel source, the views
   show nothing rather than guessing.
-- **Lessons expect the shipped sources.** If you edited a file a lesson uses, its checks may become unreachable; the
-  lesson page offers to restore the original.
+- **Lessons expect the shipped sources and default debugger settings.** If you edited a file a lesson uses (its
+  program, the include files and library, and for OS lessons the firmware and kernel), its checks may become
+  unreachable; the lesson page lists the edited files and offers to restore them. Starting a lesson resets
+  breakpoints, watchpoints and break-on settings.
 - **Workspaces live in one browser.** Clearing site data deletes them, and browser storage quotas apply. Export
   anything you want to keep.
 - **Only Chromium is tested automatically.** The app uses standard APIs (module Web Workers, IndexedDB, service

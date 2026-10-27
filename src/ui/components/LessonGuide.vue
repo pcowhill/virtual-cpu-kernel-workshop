@@ -46,20 +46,21 @@ watch(
       </button>
     </header>
     <div v-if="!collapsed" class="body">
-      <div class="steps" role="list">
-        <button
-          v-for="(x, i) in lesson.steps"
-          :key="x.title"
-          role="listitem"
-          class="dot"
-          :class="{ cur: i === L.step.value, ok: L.passed[i] }"
-          :title="x.title"
-          :aria-label="`Step ${i + 1}: ${x.title}${L.passed[i] ? ' (done)' : ''}`"
-          @click="L.go(i)"
-        >
-          {{ L.passed[i] ? '✔' : i + 1 }}
-        </button>
-      </div>
+      <ol class="steps" aria-label="Lesson steps">
+        <li v-for="(x, i) in lesson.steps" :key="x.title">
+          <button
+            class="dot"
+            :class="{ cur: i === L.step.value, ok: L.passed[i] }"
+            :title="x.title"
+            :aria-label="`Step ${i + 1}: ${x.title}${L.passed[i] ? ' (done)' : ''}`"
+            :aria-current="i === L.step.value ? 'step' : undefined"
+            :disabled="L.busy.value"
+            @click="L.go(i)"
+          >
+            {{ L.passed[i] ? '✔' : i + 1 }}
+          </button>
+        </li>
+      </ol>
       <h3>{{ st.title }}</h3>
       <div class="prose" v-html="body"></div>
       <div v-if="st.check" class="check" :class="stepDone ? 'ok' : ''" data-testid="lesson-check" role="status">
@@ -69,7 +70,9 @@ watch(
       <div v-if="L.error.value" class="err small" role="alert">Could not perform the step: {{ L.error.value }}</div>
       <div v-if="showHint && st.hint" class="hint small">{{ st.hint }}</div>
       <div class="actions">
-        <button class="btn small" :disabled="L.step.value === 0" @click="L.go(L.step.value - 1)">◀ Back</button>
+        <button class="btn small" :disabled="L.step.value === 0 || L.busy.value" @click="L.go(L.step.value - 1)">
+          ◀ Back
+        </button>
         <button
           v-if="st.solution"
           class="btn small"
@@ -88,6 +91,7 @@ watch(
         <button
           v-if="!isLast"
           class="btn small"
+          :disabled="L.busy.value"
           :class="{ primary: stepDone }"
           data-testid="lesson-next"
           @click="L.go(L.step.value + 1)"
@@ -120,6 +124,9 @@ watch(
   font-size: 1rem;
 }
 .steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   gap: 0.3rem;
   flex-wrap: wrap;

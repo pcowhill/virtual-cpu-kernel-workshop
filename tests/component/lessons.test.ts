@@ -81,4 +81,42 @@ describe('guided lessons', () => {
     expect(L.completed.value).toContain('registers');
     expect(JSON.parse(localStorage.getItem('vck.lessons.completed')!)).toContain('registers');
   });
+
+  it('a step whose work was done earlier is marked done on arrival', async () => {
+    const L = useLessons();
+    const s = useStore();
+    await L.start('first-program');
+    await settle(() => !!s.view.value?.label.includes('first-program'));
+    // While still on step 1, do step 2's work: edit, rebuild, run to the end.
+    s.project.files['examples/first-program.asm'] = s.project.files['examples/first-program.asm']!.replace(
+      'MOV R1, #10 ',
+      'MOV R1, #5  ',
+    );
+    expect(s.buildAndLoad()).toBe(true);
+    await s.client.request({ type: 'runDeterministic', cycles: 10_000 });
+    await settle(() => s.view.value?.devices.gpio.leds === 15);
+    expect(L.passed[1]).toBeFalsy();
+    L.go(1);
+    await settle(() => L.passed[1] === true);
+  });
+
+  it('starting a lesson resets debugger stops and flags edited kernel sources', async () => {
+    const L = useLessons();
+    const s = useStore();
+    s.debug.watchpoints.push([0x2000, 'w']);
+    s.debug.breakpoints.push(0x0100);
+    s.debug.breakOn.interrupts = true;
+    s.project.files['kernel/main.asm'] = s.project.files['kernel/main.asm']!.replace(
+      '= 2000          ;',
+      '= 500           ;',
+    );
+    const lesson = (await import('../../src/lessons/lessons')).LESSONS.find((l) => l.id === 'modes')!;
+    expect(L.modifiedFiles(lesson)).toContain('kernel/main.asm');
+    await L.start('modes');
+    expect(s.debug.watchpoints).toEqual([]);
+    expect(s.debug.breakpoints).toEqual([]);
+    expect(s.debug.breakOn.interrupts).toBe(false);
+    L.restoreFiles(lesson);
+    expect(L.modifiedFiles(lesson)).toEqual([]);
+  });
 });

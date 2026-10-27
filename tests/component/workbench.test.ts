@@ -233,6 +233,14 @@ describe('ReferenceLab', () => {
     expect(w.get('[data-testid=isa-detail]').text()).toMatch(/Micro-program \(\d+ cycles\)/);
     await w.get('[data-testid=ref-arch]').trigger('click');
     expect(w.find('.doc h1').exists()).toBe(true);
+    // A link to another bundled document switches tabs instead of leaving the app.
+    await w.get('[data-testid=ref-limits]').trigger('click');
+    const link = w.findAll('.doc a').find((x) => x.attributes('data-href') === 'spec/architecture.md')!;
+    const ev = new MouseEvent('click', { bubbles: true, cancelable: true });
+    link.element.dispatchEvent(ev);
+    await nextTick();
+    expect(ev.defaultPrevented).toBe(true);
+    expect(w.get('[data-testid=ref-arch]').attributes('aria-selected')).toBe('true');
   });
 });
 

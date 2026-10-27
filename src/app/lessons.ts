@@ -4,7 +4,7 @@
  * counts as done once its check has held while the step was current.
  */
 import { computed, effectScope, reactive, ref, watch, type EffectScope } from 'vue';
-import { useStore } from './store';
+import { defaultDebugSettings, useStore } from './store';
 import { GUEST_SOURCES } from '../guest';
 import { LESSONS } from '../lessons/lessons';
 import {
@@ -38,11 +38,22 @@ function saveProgress(ids: string[]): void {
   }
 }
 
-/** Source files a lesson relies on (its program and the files its solutions edit). */
+/**
+ * Source files a lesson relies on: its program, the shared include files and
+ * library, the firmware and kernel for OS lessons, and the files it edits.
+ */
 export function lessonFiles(lesson: Lesson): string[] {
   const files = new Set<string>();
+  const shipped = Object.keys(GUEST_SOURCES);
+  const under = (dir: string) => shipped.filter((f) => f.startsWith(dir)).forEach((f) => files.add(f));
+  under('include/');
+  under('lib/');
   if (lesson.setup.kind === 'bare') files.add(lesson.setup.file);
-  else lesson.setup.programs.forEach((p) => files.add(p.path));
+  else {
+    lesson.setup.programs.forEach((p) => files.add(p.path));
+    under('firmware/');
+    under('kernel/');
+  }
   for (const st of lesson.steps) for (const a of st.solution ?? []) if (a.do === 'edit') files.add(a.file);
   return [...files];
 }
@@ -72,9 +83,11 @@ function createLessons() {
     return c ? evaluateLessonCheck(c, ctx.value) : false;
   });
 
+  // Re-evaluated when the machine changes and when the step changes (the work
+  // for a step may already be done when the user arrives at it).
   watch(
-    currentHolds,
-    (ok) => {
+    [currentHolds, step, activeId],
+    ([ok]) => {
       if (ok && active.value && !busy.value) markPassed();
     },
     { immediate: true },
@@ -102,10 +115,22 @@ function createLessons() {
 
   const driver: LessonDriver = {
     async setup(lesson) {
+      // Lessons are written for the default debugger settings: a leftover
+      // watchpoint or "break on interrupts" would stop their runs early.
+      const d = defaultDebugSettings();
+      const changed =
+        s.debug.breakpoints.length > 0 ||
+        s.debug.watchpoints.length > 0 ||
+        JSON.stringify(s.debug.breakOn) !== JSON.stringify(d.breakOn);
+      s.debug.breakpoints.splice(0);
+      s.debug.watchpoints.splice(0);
+      Object.assign(s.debug.breakOn, d.breakOn);
       applySetup(s.project, lesson.setup);
       s.selectedFile.value = lesson.setup.kind === 'bare' ? lesson.setup.file : lesson.setup.programs[0]!.path;
       const ok = s.buildAndLoad();
       await s.client.request({ type: 'sync' });
+      if (ok && changed)
+        s.notify('info', 'Lesson started. Breakpoints, watchpoints and break-on settings were reset to the defaults.');
       return ok;
     },
     send: (cmd) => s.send(cmd),
@@ -167,7 +192,7 @@ function createLessons() {
 
   function go(i: number): void {
     const l = active.value;
-    if (!l) return;
+    if (!l || busy.value) return;
     step.value = Math.max(0, Math.min(l.steps.length - 1, i));
     const lab = l.steps[step.value]!.lab;
     if (lab) s.lab.value = lab;

@@ -87,8 +87,9 @@ export function buildProject(p: Project): BuildOutput {
   const sourceHash = hashSources(p);
   if (p.mode === 'bare') {
     const file = p.bareMain;
-    const result = assemble(p.files[file] ?? '', { fileName: file, files: p.files });
-    if (p.files[file] === undefined) {
+    const source = Object.prototype.hasOwnProperty.call(p.files, file) ? p.files[file] : undefined;
+    const result = assemble(source ?? '', { fileName: file, files: p.files });
+    if (source === undefined) {
       result.diagnostics.push({
         severity: 'error',
         message: `file '${file}' does not exist`,

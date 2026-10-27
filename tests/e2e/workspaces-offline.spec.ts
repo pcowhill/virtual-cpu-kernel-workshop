@@ -76,9 +76,20 @@ test('save a workspace with machine state, snapshot and restore, reload and reop
   });
   await expect(page.getByTestId('ws-import-error')).toContainText('unsupported workspace version 99');
 
-  // Deleting asks for confirmation; cancelling keeps the workspace.
-  await page.getByTestId('ws-delete-E2E experiment (imported)').click();
+  // Deleting asks for confirmation. The dialog takes focus on Cancel, keeps Tab inside, and Escape closes it,
+  // returning focus to the button that opened it.
+  const del = page.getByTestId('ws-delete-E2E experiment (imported)');
+  await del.click();
   await expect(page.getByTestId('confirm-dialog')).toBeVisible();
+  await expect(page.getByTestId('confirm-no')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('confirm-yes')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('confirm-no')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('confirm-dialog')).toBeHidden();
+  await expect(del).toBeFocused();
+  await del.click();
   await page.getByTestId('confirm-no').click();
   await expect(page.getByTestId('ws-list')).toContainText('E2E experiment (imported)');
   await page.getByTestId('ws-delete-E2E experiment (imported)').click();

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useStore } from '../../app/store';
 import { useWorkspaces } from '../../app/workspaces';
 import { ImportError, type SnapshotRecord } from '../../app/workspace-format';
@@ -14,15 +14,50 @@ const confirming = ref<{ title: string; detail: string; action: () => Promise<un
 const importError = ref<string | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 
-onMounted(() => void W.refresh());
+const dialog = ref<HTMLElement | null>(null);
+const cancelBtn = ref<HTMLButtonElement | null>(null);
+const renameInput = ref<HTMLInputElement[] | HTMLInputElement | null>(null);
+let returnFocus: HTMLElement | null = null;
 
+onMounted(() => {
+  void W.refresh();
+  document.addEventListener('keydown', onDialogKey);
+});
+onBeforeUnmount(() => document.removeEventListener('keydown', onDialogKey));
+
+/** Ask for confirmation in a modal dialog; Cancel has the initial focus. */
 function ask(title: string, detail: string, action: () => Promise<unknown> | unknown): void {
+  returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   confirming.value = { title, detail, action };
+  void nextTick(() => cancelBtn.value?.focus());
+}
+
+function closeDialog(): void {
+  confirming.value = null;
+  const el = returnFocus;
+  returnFocus = null;
+  if (el?.isConnected) el.focus();
+}
+
+/** Escape closes the dialog; Tab stays inside it while it is open. */
+function onDialogKey(e: KeyboardEvent): void {
+  if (!confirming.value) return;
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    closeDialog();
+  } else if (e.key === 'Tab' && dialog.value) {
+    const items = [...dialog.value.querySelectorAll<HTMLElement>('button')];
+    if (!items.length) return;
+    const i = items.indexOf(document.activeElement as HTMLElement);
+    const next = e.shiftKey ? (i <= 0 ? items.length - 1 : i - 1) : i === items.length - 1 ? 0 : i + 1;
+    e.preventDefault();
+    items[next]!.focus();
+  }
 }
 
 async function confirmNow(): Promise<void> {
   const c = confirming.value;
-  confirming.value = null;
+  closeDialog();
   if (c) await run(c.action);
 }
 
@@ -35,8 +70,14 @@ async function run(fn: () => Promise<unknown> | unknown): Promise<void> {
 }
 
 function openWs(id: string, name: string): void {
-  if (W.dirty.value && id !== W.current.id)
-    ask(`Open “${name}”?`, 'Unsaved changes to the current workspace will be lost.', () => W.open(id));
+  if (W.dirty.value)
+    ask(
+      id === W.current.id ? `Reopen “${name}”?` : `Open “${name}”?`,
+      id === W.current.id
+        ? 'Your unsaved changes are replaced by the saved copy.'
+        : 'Unsaved changes to the current workspace will be lost.',
+      () => W.open(id),
+    );
   else void run(() => W.open(id));
 }
 
@@ -54,6 +95,11 @@ async function snap(): Promise<void> {
 function startRename(id: string, name: string): void {
   renaming.value = id;
   renameText.value = name;
+  void nextTick(() => {
+    const el = Array.isArray(renameInput.value) ? renameInput.value[0] : renameInput.value;
+    el?.focus();
+    el?.select();
+  });
 }
 
 async function finishRename(): Promise<void> {
@@ -245,11 +291,13 @@ const when = (t: number) => new Date(t).toLocaleString();
               <td>
                 <form v-if="renaming === w.id" class="row" @submit.prevent="finishRename">
                   <input
+                    ref="renameInput"
                     v-model="renameText"
                     type="text"
                     maxlength="80"
                     aria-label="New name"
                     data-testid="ws-rename-input"
+                    @keydown.esc.stop="renaming = null"
                   />
                   <button class="btn small" type="submit">OK</button>
                   <button class="btn small" type="button" @click="renaming = null">Cancel</button>
@@ -290,21 +338,22 @@ const when = (t: number) => new Date(t).toLocaleString();
       </div>
     </section>
 
-    <div v-if="confirming" class="modal-backdrop" @click.self="confirming = null">
+    <div v-if="confirming" class="modal-backdrop" @click.self="closeDialog">
       <div
+        ref="dialog"
         class="modal panel"
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
+        aria-describedby="confirm-detail"
         data-testid="confirm-dialog"
-        @keydown.esc="confirming = null"
       >
         <header id="confirm-title">{{ confirming.title }}</header>
         <div class="body">
-          <p>{{ confirming.detail }}</p>
+          <p id="confirm-detail">{{ confirming.detail }}</p>
           <div class="row">
+            <button ref="cancelBtn" class="btn" data-testid="confirm-no" @click="closeDialog">Cancel</button>
             <button class="btn danger" data-testid="confirm-yes" @click="confirmNow">Yes, continue</button>
-            <button class="btn" autofocus data-testid="confirm-no" @click="confirming = null">Cancel</button>
           </div>
         </div>
       </div>

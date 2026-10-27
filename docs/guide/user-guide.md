@@ -77,7 +77,9 @@ its check is **observed on the running machine**, for example "the CPU is paused
 controls (step, run, set a watchpoint, edit and rebuild), so you can see exactly what it did. **Leave** exits the
 lesson and keeps the machine as it is for free experimentation. Progress is remembered in this browser.
 
-If you edited a file a lesson relies on, the lesson page offers to restore the original.
+Starting a lesson resets breakpoints, watchpoints and the break-on settings to their defaults, because the lessons
+are written for them. If you edited a file a lesson relies on (its program, the include files and library, and
+for operating-system lessons the firmware and kernel), the lesson page offers to restore the originals.
 
 ## Workspaces
 
@@ -89,8 +91,9 @@ state at save time and any number of named snapshots. Workspaces are stored in t
 - **Take snapshot** captures the machine (registers, memory, devices, storage, pending interrupts, cycle count).
   **Restore** returns to it. A snapshot taken from different sources than the loaded machine is marked; restoring
   it works, but source views may not match.
-- **New**, **Duplicate**, **Rename** and **Delete** do what they say. Deleting, and replacing unsaved work, asks
-  for confirmation.
+- **New**, **Duplicate**, **Rename** and **Delete** do what they say. Deleting asks for confirmation, and so does
+  anything that would replace unsaved changes (to sources, build configuration, debugger settings, name or notes),
+  including reopening the workspace that is already open.
 - **Export** downloads a `.vc8.json` file; **Import** reads one back. Imports are validated and never executed
   as code; see [workspace format](../dev/workspace-format.md).
 

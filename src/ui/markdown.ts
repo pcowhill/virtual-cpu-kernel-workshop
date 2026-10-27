@@ -19,7 +19,8 @@ function inline(text: string): string {
   t = esc(t);
   t = t.replace(/&lt;kbd&gt;(.{1,30}?)&lt;\/kbd&gt;/g, '<kbd class="kbd">$1</kbd>');
   t = t.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, label: string, href: string) => {
-    const safe = /^(https?:|#|\.{0,2}\/|[\w-]+\.md)/.test(href) ? href : '#';
+    // Allowed: http(s) links, in-page anchors, and relative links to Markdown documents.
+    const safe = /^(https?:\/\/|#[\w-]*$|(\.\.?\/)*[\w-]+(\/[\w-]+)*\.md(#[\w-]*)?$)/.test(href) ? href : '#';
     const external = /^https?:/.test(safe);
     return `<a href="${safe}"${external ? ' target="_blank" rel="noopener"' : ''} data-href="${safe}">${label}</a>`;
   });

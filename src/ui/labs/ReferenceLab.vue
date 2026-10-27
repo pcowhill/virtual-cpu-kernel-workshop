@@ -39,6 +39,39 @@ const DOCS: Record<string, string> = {
   guide: guideDoc,
   limits: limitsDoc,
 };
+/** Bundled documents by file name, so links between them switch tabs instead of leaving the app. */
+const DOC_FILES: Record<string, (typeof TABS)[number]['id']> = {
+  'architecture.md': 'arch',
+  'isa-reference.md': 'isa',
+  'assembly-language.md': 'asm',
+  'kernel.md': 'kernel',
+  'boot-process.md': 'boot',
+  'preemption-walkthrough.md': 'preempt',
+  'user-guide.md': 'guide',
+  'limitations.md': 'limits',
+};
+const REPO_DOCS = 'https://github.com/pcowhill/virtual-cpu-kernel-workshop/blob/main/docs/';
+
+function onDocClick(e: MouseEvent): void {
+  const a = (e.target as HTMLElement).closest('a');
+  const href = a?.getAttribute('data-href');
+  if (!a || !href || /^https?:/.test(href)) return; // external links open in a new tab
+  e.preventDefault();
+  if (href.startsWith('#')) {
+    document.getElementById(href.slice(1))?.scrollIntoView();
+    return;
+  }
+  const file = href.split('#')[0]!.split('/').pop()!;
+  const target = DOC_FILES[file];
+  if (target) {
+    tab.value = target;
+    return;
+  }
+  // Documents not bundled in the app (developer docs) are read on GitHub.
+  const path = href.replace(/^(\.\.?\/)+/, '').replace(/^docs\//, '');
+  window.open(REPO_DOCS + path, '_blank', 'noopener');
+}
+
 const html = computed(() => (DOCS[tab.value] ? renderMarkdown(DOCS[tab.value]!) : ''));
 const TABS = [
   { id: 'guide', label: 'User guide' },
@@ -180,7 +213,7 @@ const TABS = [
       </div>
     </section>
     <section v-else class="panel">
-      <div class="body prose doc" v-html="html"></div>
+      <div class="body prose doc" @click="onDocClick" v-html="html"></div>
     </section>
   </div>
 </template>

@@ -99,8 +99,11 @@ describe('guided lessons', () => {
           EXAMPLES.some((e) => e.id === id),
           `${l.id}: example ${id}`,
         ).toBe(true);
-      // Every step is checked against the machine, and all but read-only steps can be demonstrated.
-      for (const s of l.steps) expect(s.check, `${l.id}: ${s.title}`).toBeDefined();
+      // Every step is checked against the machine and can be demonstrated with "Show me".
+      for (const s of l.steps) {
+        expect(s.check, `${l.id}: ${s.title}`).toBeDefined();
+        expect(s.solution, `${l.id}: ${s.title} can be demonstrated`).toBeDefined();
+      }
     }
   });
 
@@ -110,10 +113,8 @@ describe('guided lessons', () => {
       await performActions(lesson, [{ do: 'setup' }], d);
       for (const step of lesson.steps) {
         const label = `${lesson.id} / ${step.title}: ${describeCheck(step.check!)}`;
-        if (step.solution) {
-          expect(evaluateLessonCheck(step.check!, d.ctx()), `${label} (holds before the step)`).toBe(false);
-          await performActions(lesson, step.solution, d);
-        }
+        expect(evaluateLessonCheck(step.check!, d.ctx()), `${label} (holds before the step)`).toBe(false);
+        await performActions(lesson, step.solution!, d);
         const v = d.ctx().view!;
         const procs = v.os?.processes.map((p) => `${p.name}:${p.state}:${p.runs}:${p.exitCode}`).join(',');
         expect(

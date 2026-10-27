@@ -12,6 +12,7 @@ import { buildProject, defaultProject, type Project } from './project';
 import type { DebugSettings } from './store';
 import { Machine, type MachineSnapshot } from '../core/machine/machine';
 import { MAX_PROGRAMS } from '../core/build/system';
+import { KBD_QUEUE_CAPACITY, TERM_COLS } from '../core/isa/constants';
 
 export const WORKSPACE_FORMAT = 'vc8-workspace';
 export const WORKSPACE_VERSION = 1;
@@ -121,12 +122,13 @@ export function validateProject(x: unknown): Project {
   if (entries.length === 0) throw new ImportError('project.files is empty');
   if (entries.length > MAX_FILES) throw new ImportError(`too many source files (${entries.length} > ${MAX_FILES})`);
   const files: Record<string, string> = {};
+  const has = (name: string) => Object.prototype.hasOwnProperty.call(files, name);
   for (const [path, text] of entries) {
     if (!validPath(path)) throw new ImportError(`invalid source file name "${path.slice(0, 80)}"`);
     files[path] = str(text, `file ${path}`, MAX_FILE_CHARS);
   }
   const bareMain = str(p['bareMain'], 'project.bareMain', 120);
-  if (files[bareMain] === undefined) throw new ImportError(`project.bareMain "${bareMain}" is not one of the files`);
+  if (!has(bareMain)) throw new ImportError(`project.bareMain "${bareMain}" is not one of the files`);
   const os = obj(p['os'], 'project.os');
   const firmware = str(os['firmware'], 'project.os.firmware', 120);
   const kernel = str(os['kernel'], 'project.os.kernel', 120);
@@ -134,7 +136,7 @@ export function validateProject(x: unknown): Project {
     ['firmware', firmware],
     ['kernel', kernel],
   ] as const)
-    if (files[f] === undefined) throw new ImportError(`project.os.${k} "${f}" is not one of the files`);
+    if (!has(f)) throw new ImportError(`project.os.${k} "${f}" is not one of the files`);
   const progsIn = os['programs'];
   if (!Array.isArray(progsIn) || progsIn.length > MAX_PROGRAMS)
     throw new ImportError(`project.os.programs must be a list of at most ${MAX_PROGRAMS} programs`);
@@ -142,7 +144,7 @@ export function validateProject(x: unknown): Project {
     const o = obj(q, `program ${i + 1}`);
     const name = str(o['name'], `program ${i + 1} name`, 32);
     const path = str(o['path'], `program ${i + 1} path`, 120);
-    if (files[path] === undefined) throw new ImportError(`program ${i + 1} source "${path}" is not one of the files`);
+    if (!has(path)) throw new ImportError(`program ${i + 1} source "${path}" is not one of the files`);
     return { name, path };
   });
   return { mode, files, bareMain, os: { firmware, kernel, programs } };
@@ -245,6 +247,37 @@ function sameShape(x: unknown, ref: unknown, where: string, path: string): void 
   if (typeof x === 'number' && !Number.isSafeInteger(x)) throw new ImportError(`${where} must be an integer`);
 }
 
+/** No negative numbers anywhere in a snapshot. */
+function nonNegative(x: unknown, where: string): void {
+  if (typeof x === 'number') {
+    if (x < 0) throw new ImportError(`${where} must not be negative`);
+  } else if (Array.isArray(x)) x.forEach((e, i) => nonNegative(e, `${where}[${i}]`));
+  else if (isObj(x)) for (const [k, v] of Object.entries(x)) nonNegative(v, `${where}.${k}`);
+}
+
+/** Device registers and internal state must hold values the hardware could hold. */
+function checkDeviceRanges(snap: MachineSnapshot, where: string): void {
+  nonNegative(snap, where);
+  const d = snap.devices;
+  const w = `${where}.devices`;
+  const byte = (v: number, name: string) => int(v, `${w}.${name}`, 0, 0xff);
+  byte(d.gpio.leds, 'gpio.leds');
+  byte(d.gpio.switches, 'gpio.switches');
+  byte(d.pic.mask, 'pic.mask');
+  d.sysctl.latch.forEach((v, i) => byte(v, `sysctl.latch[${i}]`));
+  byte(d.timer.ctrl, 'timer.ctrl');
+  int(d.timer.reload, `${w}.timer.reload`, 0, 0xffff);
+  int(d.timer.count, `${w}.timer.count`, 0, 0xffff);
+  byte(d.keyboard.ctrl, 'keyboard.ctrl');
+  if (d.keyboard.queue.length > KBD_QUEUE_CAPACITY)
+    throw new ImportError(`${w}.keyboard.queue holds more than ${KBD_QUEUE_CAPACITY} keys`);
+  d.keyboard.queue.forEach((v, i) => byte(v, `keyboard.queue[${i}]`));
+  int(d.terminal.col, `${w}.terminal.col`, 0, TERM_COLS);
+  for (const k of ['ptr', 'block', 'status', 'errcode', 'ctrl', 'pendingCmd', 'pendingBlock'] as const)
+    byte(d.storage[k], `storage.${k}`);
+  int(d.storage.busyCycles, `${w}.storage.busyCycles`, 0, 0xffff);
+}
+
 /**
  * Validate a machine snapshot from an untrusted source: structure, register
  * ranges, then a round trip through a scratch machine (restore → snapshot must
@@ -262,6 +295,7 @@ export function validateSnapshot(x: unknown, where = 'snapshot'): MachineSnapsho
     int(c[k], `${where}.cpu.${k}`, 0, 0xffff);
   for (const k of ['psw', 'cause', 'kscratch'] as const) int(c[k], `${where}.cpu.${k}`, 0, 0xff);
   int(snap.cycle, `${where}.cycle`, 0, Number.MAX_SAFE_INTEGER);
+  checkDeviceRanges(snap, where);
   const m = new Machine();
   try {
     m.restore(snap);
@@ -289,6 +323,15 @@ function validateSnapshotRecord(x: unknown, where: string): SnapshotRecord {
     sourceHash: r['sourceHash'] === null ? null : str(r['sourceHash'], `${where}.sourceHash`, 64),
     machine: validateSnapshot(r['machine'], `${where}.machine`),
   };
+}
+
+function uniqueIds(list: SnapshotRecord[]): SnapshotRecord[] {
+  const seen = new Set<string>();
+  for (const r of list) {
+    if (seen.has(r.id)) throw new ImportError(`two snapshots share the id "${r.id.slice(0, 40)}"`);
+    seen.add(r.id);
+  }
+  return list;
 }
 
 /** Parse and validate an exported workspace. Throws ImportError with a readable reason. */
@@ -319,6 +362,6 @@ export function importWorkspace(text: string): Omit<Workspace, 'id'> {
     project: validateProject(w['project']),
     debug: validateDebug(w['debug']),
     machine: w['machine'] === null ? null : validateSnapshotRecord(w['machine'], 'workspace.machine'),
-    snapshots: snapsIn.map((s, i) => validateSnapshotRecord(s, `snapshot ${i + 1}`)),
+    snapshots: uniqueIds(snapsIn.map((s, i) => validateSnapshotRecord(s, `snapshot ${i + 1}`))),
   };
 }

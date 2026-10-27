@@ -109,6 +109,11 @@ export interface LessonContext {
   sourcesMatchLoaded: boolean;
 }
 
+/** Case- and spacing-insensitive form of source text (assembly is case-insensitive). */
+function normalizeSource(s: string): string {
+  return s.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
 export function resolveWhere(at: Where, build: BuildOutput | null): number | undefined {
   if (typeof at === 'number') return at;
   return build?.symbols.find((s) => s.name === at)?.value;
@@ -133,7 +138,11 @@ export function evaluateLessonCheck(check: LessonCheck, ctx: LessonContext): boo
   const v = ctx.view;
   if (check.kind === 'all') return check.checks.every((c) => evaluateLessonCheck(c, ctx));
   if (check.kind === 'sourceLoaded')
-    return !!v?.loaded && ctx.sourcesMatchLoaded && (ctx.project.files[check.file] ?? '').includes(check.text);
+    return (
+      !!v?.loaded &&
+      ctx.sourcesMatchLoaded &&
+      normalizeSource(ctx.project.files[check.file] ?? '').includes(normalizeSource(check.text))
+    );
   if (!v || !v.loaded) return false;
   switch (check.kind) {
     case 'loaded':

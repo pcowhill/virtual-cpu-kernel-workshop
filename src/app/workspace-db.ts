@@ -37,7 +37,15 @@ function open(): Promise<IDBDatabase> {
       const db = r.result;
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
     };
-    r.onsuccess = () => resolve(r.result);
+    r.onsuccess = () => {
+      const db = r.result;
+      // Let a newer version of the app (another tab) upgrade the database.
+      db.onversionchange = () => {
+        db.close();
+        dbPromise = null;
+      };
+      resolve(db);
+    };
     r.onerror = () => reject(r.error ?? new Error('could not open workspace storage'));
     r.onblocked = () => reject(new Error('workspace storage is blocked by another tab'));
   }).catch((e: unknown) => {
@@ -50,6 +58,18 @@ function open(): Promise<IDBDatabase> {
 async function store(mode: IDBTransactionMode): Promise<IDBObjectStore> {
   const db = await open();
   return db.transaction(STORE, mode).objectStore(STORE);
+}
+
+/** Run a write and resolve only when its transaction has committed (quota errors surface here). */
+async function write(fn: (s: IDBObjectStore) => void): Promise<void> {
+  const db = await open();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.oncomplete = () => resolve();
+    tx.onabort = () => reject(tx.error ?? new Error('the workspace storage transaction was aborted'));
+    tx.onerror = () => reject(tx.error ?? new Error('workspace storage failed'));
+    fn(tx.objectStore(STORE));
+  });
 }
 
 /** Plain-data copy (drops Vue proxies) so IndexedDB can structured-clone it. */
@@ -75,11 +95,12 @@ export async function getWorkspace(id: string): Promise<Workspace | null> {
 }
 
 export async function putWorkspace(ws: Workspace): Promise<void> {
-  await request((await store('readwrite')).put(plain(ws)));
+  const data = plain(ws);
+  await write((s) => s.put(data));
 }
 
 export async function deleteWorkspace(id: string): Promise<void> {
-  await request((await store('readwrite')).delete(id));
+  await write((s) => s.delete(id));
 }
 
 /** For tests: forget the cached connection. */

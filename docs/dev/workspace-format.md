@@ -57,7 +57,8 @@ UTF-8 JSON files named `*.vc8.json`. Code: `src/app/workspace-format.ts` (format
 included), CPU registers, control registers, internal latches, the micro-program position (so a snapshot may be
 taken between two clock cycles of an instruction) and any pending exception, every device's registers and internal
 state (timer count, terminal screen, keyboard FIFO, LEDs and switches, storage image (base64) and controller state,
-interrupt controller pending and mask bits), the input log and the per-mode cycle counters.
+interrupt controller mask), the input log and the per-mode cycle counters. Pending interrupt lines are not stored
+separately: they follow from the device states (for example an expired timer with interrupts enabled).
 
 ## Validation on import
 
@@ -65,10 +66,13 @@ An import is refused, with a reason shown to the user, unless all of these hold:
 
 1. The file is at most 32 MB and parses as JSON; `format` is `vc8-workspace` and `version` is `1`.
 2. Every field has the documented type and limits. Source file names must be relative `.asm`/`.inc` paths without
-   `.`/`..` segments; `bareMain`, `firmware`, `kernel` and each program path must name an included file;
-   addresses are 0–0xFFFF.
+   `.`/`..` segments; `bareMain`, `firmware`, `kernel` and each program path must name one of the included files
+   (an own entry: names such as `constructor` are not files); addresses are 0–0xFFFF; snapshot ids are unique.
 3. Each machine snapshot has exactly the structure of a snapshot produced by this version (no missing or extra
-   keys; correct types; integers), registers are in range (8-bit registers 0–255, addresses 0–0xFFFF), it restores
+   keys; correct types; integers; nothing negative), CPU registers are in range (8-bit registers 0–255, addresses
+   0–0xFFFF), device registers hold values the hardware could hold (LEDs, switches, interrupt mask, storage
+   registers and keyboard FIFO entries are bytes; the FIFO holds at most 16 keys; timer RELOAD/COUNT are 16-bit;
+   the terminal column is within the 80-column screen), it restores
    into a scratch machine, taking a snapshot of that machine reproduces the input exactly, and the scratch machine
    then runs 2 000 cycles without error.
 

@@ -404,11 +404,12 @@ and bytes; diagnostics link back to the line.`,
     steps: [
       {
         title: 'Inspect the machine code',
-        body: `Open \`examples/first-program.asm\` and click the line \`ADD R0, R1\`. The inspector shows its address
-(0x0106) and bytes. Then make a mistake on purpose — change \`R1\` to \`R9\` — and press **Assemble** to see the
-diagnostic. Undo it before continuing.`,
+        body: `Open \`examples/first-program.asm\` and click the line \`ADD R0, R1\`: the inspector shows its address
+(0x0106) and its bytes. Then step (<kbd>F10</kbd>) until the editor's PC marker sits on that line. Optionally, make a
+mistake on purpose (change \`R1\` to \`R9\`), press **Assemble** to see the diagnostic, and undo it.`,
         lab: 'editor',
-        check: { kind: 'loaded', label: 'first-program' },
+        check: { kind: 'pausedAt', at: 0x0106 },
+        solution: [{ do: 'step', count: 3 }],
       },
       {
         title: 'Sum 1 to 5 instead',

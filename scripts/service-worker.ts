@@ -53,7 +53,9 @@ const CACHE = 'vck-${version}';
 const PRECACHE = ${JSON.stringify(['./', ...files.filter((f) => f !== 'index.html')], null, 0)};
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)));
+  // cache: 'reload' bypasses the HTTP cache, so a new worker never stores a stale
+  // index.html (GitHub Pages serves it with max-age) next to the new assets.
+  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE.map((u) => new Request(u, { cache: 'reload' })))));
 });
 
 self.addEventListener('activate', (event) => {
@@ -69,6 +71,11 @@ self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
+/** Look up a request in this version's cache only. */
+function fromCache(req) {
+  return caches.open(CACHE).then((c) => c.match(req, { ignoreSearch: true, ignoreVary: true }));
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -77,10 +84,10 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== scope.origin || !url.pathname.startsWith(scope.pathname)) return;
   if (req.mode === 'navigate') {
     // The app is a single page: every navigation inside the scope is the app shell.
-    event.respondWith(caches.match('./', { ignoreVary: true }).then((r) => r || fetch(req)));
+    event.respondWith(fromCache('./').then((r) => r || fetch(req)));
     return;
   }
-  event.respondWith(caches.match(req, { ignoreSearch: true, ignoreVary: true }).then((r) => r || fetch(req)));
+  event.respondWith(fromCache(req).then((r) => r || fetch(req)));
 });
 `;
 }

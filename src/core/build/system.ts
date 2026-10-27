@@ -11,6 +11,11 @@ import { assemble, type AssemblyResult, type Diagnostic } from '../asm/assembler
 import { DISK_BLOCK_COUNT, DISK_BLOCK_SIZE, MEM } from '../isa/constants';
 import type { MachineConfig, MemorySegment } from '../machine/machine';
 
+/** A source file by name: own properties only, so names like "constructor" are simply missing. */
+function own(files: Record<string, string>, name: string): string | undefined {
+  return Object.prototype.hasOwnProperty.call(files, name) ? files[name] : undefined;
+}
+
 export const KERNEL_LOAD = 0x2000;
 /** The kernel image may occupy 0x2000–0x4FFF; 0x5000–0x5FFF is kernel data and stacks. */
 export const KERNEL_IMAGE_END = 0x4fff;
@@ -106,22 +111,22 @@ export function buildSystem(files: Record<string, string>, config: SystemConfig)
     diagnostics.push({ component, file, line: 0, column: 0, severity: 'error', message });
 
   // ---- firmware (ROM) ----
-  const firmware = assemble(files[config.firmware] ?? '', {
+  const firmware = assemble(own(files, config.firmware) ?? '', {
     fileName: config.firmware,
     files,
     regions: [{ start: MEM.ROM_START, end: MEM.ROM_END, name: 'Boot ROM' }],
   });
   collect('firmware', firmware);
-  if (files[config.firmware] === undefined) fail('firmware', config.firmware, 'firmware source file not found');
+  if (own(files, config.firmware) === undefined) fail('firmware', config.firmware, 'firmware source file not found');
 
   // ---- kernel ----
-  const kernel = assemble(files[config.kernel] ?? '', {
+  const kernel = assemble(own(files, config.kernel) ?? '', {
     fileName: config.kernel,
     files,
     regions: [{ start: KERNEL_LOAD, end: KERNEL_IMAGE_END, name: 'kernel image area' }],
   });
   collect('kernel', kernel);
-  if (files[config.kernel] === undefined) fail('kernel', config.kernel, 'kernel source file not found');
+  if (own(files, config.kernel) === undefined) fail('kernel', config.kernel, 'kernel source file not found');
 
   // ---- user programs ----
   if (config.programs.length > MAX_PROGRAMS) {
@@ -129,14 +134,14 @@ export function buildSystem(files: Record<string, string>, config: SystemConfig)
   }
   const programs: ProgramBuild[] = config.programs.slice(0, MAX_PROGRAMS).map((spec, slot) => {
     const base = slotBase(slot);
-    const result = assemble(files[spec.path] ?? '', {
+    const result = assemble(own(files, spec.path) ?? '', {
       fileName: spec.path,
       files,
       predefined: { PROC_BASE: base, PROC_LIMIT: base + SLOT_SIZE },
       regions: [{ start: base, end: base + SLOT_SIZE - 1, name: `process slot ${slot}` }],
     });
     collect(`program ${spec.name}`, result);
-    if (files[spec.path] === undefined) fail(`program ${spec.name}`, spec.path, 'source file not found');
+    if (own(files, spec.path) === undefined) fail(`program ${spec.name}`, spec.path, 'source file not found');
     return { spec, slot, result, image: null };
   });
 

@@ -35,8 +35,10 @@ function createWorkspaces() {
   const storageError = ref<string | null>(null);
   const savedKey = ref<string | null>(null);
 
-  /** What "unsaved changes" compares: sources, build configuration and notes. */
-  const contentKey = computed(() => `${hashSources(s.project)}|${current.name}|${current.notes}`);
+  /** What "unsaved changes" compares: sources, build configuration, debugger settings, name and notes. */
+  const contentKey = computed(
+    () => `${hashSources(s.project)}|${JSON.stringify(s.debug)}|${current.name.trim()}|${current.notes}`,
+  );
   const dirty = computed(() => savedKey.value !== contentKey.value);
   // An untouched new workspace has nothing to lose.
   savedKey.value = contentKey.value;
@@ -81,11 +83,14 @@ function createWorkspaces() {
   }
 
   async function save(): Promise<void> {
+    if (!current.name.trim()) current.name = 'Untitled workspace';
+    // The key of what is being saved, taken before any await: edits made while
+    // saving are not in this save and must still show as unsaved.
+    const key = contentKey.value;
     const ws = await capture();
     await putWorkspace(ws);
     current.id = ws.id;
-    current.name = ws.name;
-    savedKey.value = contentKey.value;
+    savedKey.value = key;
     await refresh();
     s.notify('success', `Saved workspace “${ws.name}”.`);
   }
@@ -176,10 +181,11 @@ function createWorkspaces() {
     if (!n) return;
     const ws = await getWorkspace(id);
     if (!ws) return;
+    const wasDirty = dirty.value;
     await putWorkspace({ ...ws, name: n, updatedAt: Date.now() });
     if (current.id === id) {
       current.name = n;
-      if (!dirty.value) savedKey.value = contentKey.value;
+      if (!wasDirty) savedKey.value = contentKey.value;
     }
     await refresh();
   }

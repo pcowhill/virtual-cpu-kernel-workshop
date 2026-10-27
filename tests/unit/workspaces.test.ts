@@ -103,6 +103,28 @@ describe('workspace export/import', () => {
     );
     reject((d) => (d.workspace.machine.machine.memory = 'AAAA'), /cannot be restored|does not accept/);
     reject((d) => ((d.workspace.machine.machine as unknown as { format: string }).format = 'x'), /not a version 1/);
+    // Names of built-in object properties are not files.
+    for (const name of ['constructor', 'toString', '__proto__', 'hasOwnProperty'])
+      reject((d) => ((d.workspace.project as unknown as { bareMain: string }).bareMain = name), /not one of the files/);
+    reject(
+      (d) => ((d.workspace.project as unknown as { os: { kernel: string } }).os.kernel = 'toString'),
+      /not one of the files/,
+    );
+    // Device state must be something the hardware could hold.
+    const dev = (d: ReturnType<typeof valid>) => d.workspace.machine.machine.devices;
+    reject((d) => (dev(d).gpio.leds = 99999), /gpio\.leds/);
+    reject((d) => (dev(d).keyboard.queue = [300]), /keyboard\.queue\[0\]/);
+    reject((d) => (dev(d).keyboard.queue = new Array<number>(17).fill(65)), /more than 16 keys/);
+    reject((d) => (dev(d).timer.reload = -5), /must not be negative/);
+    reject((d) => (dev(d).pic.mask = 0x12345), /pic\.mask/);
+    reject(
+      (d) => ((d.workspace.machine.machine as { instructions: number }).instructions = -1),
+      /must not be negative/,
+    );
+    reject((d) => {
+      const snaps = d.workspace['snapshots'] as { id: string }[];
+      snaps.push({ ...snaps[0]! });
+    }, /share the id/);
   });
 
   it('accepts snapshots of a halted machine and of a machine at power-on', () => {
@@ -129,6 +151,18 @@ describe('workspace export/import', () => {
     const snap = c.machine.snapshot();
     expect(snap.cpu.exception).not.toBeNull();
     expect(validateSnapshot(JSON.parse(JSON.stringify(snap)))).toEqual(snap);
+  });
+});
+
+describe('builds never trust file names', () => {
+  it('a project naming a built-in property as its program gets a diagnostic, not a crash', () => {
+    const p = defaultProject();
+    p.bareMain = 'constructor';
+    const b = buildProject(p);
+    expect(b.ok).toBe(false);
+    p.mode = 'os';
+    p.os.kernel = 'toString';
+    expect(buildProject(p).ok).toBe(false);
   });
 });
 
