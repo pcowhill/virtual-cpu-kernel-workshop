@@ -51,7 +51,7 @@ CMPP P2, #LIMIT / JNE .loop` in user mode. `PSW = 0x40`: interrupts enabled.
    protection unit now only allows `0x8000–0x9FFF`. Process 2 continues exactly
    where it was interrupted, with all its registers intact.
 
-In the build used here the kernel part (steps 3–8) takes about 1 350–1 750 cycles,
+In the build used here the kernel part (steps 3–8) takes about 1 100–1 600 cycles,
 and the next process then runs for a full quantum (up to about 1 750 cycles of
 user code before the next tick, after the restart and the return path).
 
@@ -70,7 +70,8 @@ user code before the next tick, after the restart and the return path).
 ## Things to try
 
 - Change `QUANTUM` in `kernel/main.asm`, rebuild and reboot: smaller quanta mean
-  more switches and a larger share of kernel time.
+  more switches and a larger share of kernel time. Below about 250 cycles (the
+  kernel's path from restarting the timer to `RTI`) no process can make progress.
 - Remove the `CALL timer_restart` in `schedule` and set `QUANTUM`
   below the handler's cost: the timer fires again before the process executes a
   single instruction — _interrupt livelock_, which this kernel was written to

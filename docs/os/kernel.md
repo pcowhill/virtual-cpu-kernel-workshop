@@ -94,8 +94,11 @@ frame pointer, load someone else's":
    (counting a tick whenever that reaches a quantum) and restarts the timer.
    Restarting prevents _interrupt livelock_ (a tick taken immediately after
    `RTI` whenever kernel work approaches a quantum); the accounting keeps
-   `ticks` and sleeping processes accurate however often processes yield. Then
-   it jumps to
+   `ticks` and sleeping processes close to real time however often processes
+   yield. It is not exact: the ~300 cycles during which `timer_restart` itself
+   has the timer stopped are not counted, so under very yield-heavy load ticks
+   run up to about 15% slow. The path from the restart to `RTI` is about 250
+   cycles, so a `QUANTUM` below that would still livelock. Then it jumps to
    `resume_current`.
 3. `resume_current` loads `SP` from the PCB, loads `UBASE`/`ULIMIT`, pops `USP`
    and `R7…R0`, and executes `RTI`, which restores `PSW` and `PC`.

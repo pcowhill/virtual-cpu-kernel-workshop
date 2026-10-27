@@ -23,7 +23,7 @@
         .include "vc8.inc"
 
 KERNEL_BASE     = 0x2000        ; load address of this image
-QUANTUM         = 2000          ; timer period (cycles) = scheduling time slice
+QUANTUM         = 2000          ; timer period (cycles) = scheduling time slice (250..32767)
 MAX_PROCS       = 4
 SLOT_SIZE_HI    = 0x20          ; user slot size 0x2000 (high byte)
 
