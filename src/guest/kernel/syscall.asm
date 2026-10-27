@@ -84,7 +84,9 @@ sys_putc:
 sys_puts:
         LDW P1, [P2+FR_P1]              ; user pointer
         MOV R5, #0                      ; characters written
-.loop:  LDW P0, [P3+PCB_BASE]
+.loop:  CMP R5, #255
+        JEQ .done                       ; at most 255 characters
+        LDW P0, [P3+PCB_BASE]
         CMPP P1, P0
         JCS .fault                      ; below the caller's window
         LDW P0, [P3+PCB_LIMIT]
@@ -97,7 +99,7 @@ sys_puts:
         CALL kputc
         INCP P1
         INC R5
-        JNE .loop                       ; at most 255 characters
+        JMP .loop
 .done:  MOV R0, R5
         MOV R1, #E_OK
         JMP sys_return

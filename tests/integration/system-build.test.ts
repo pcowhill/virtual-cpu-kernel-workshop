@@ -82,6 +82,30 @@ describe('system build and disk layout', () => {
     expect(k.diagnostics.some((d) => d.component === 'kernel' && /kernel image area/.test(d.message))).toBe(true);
   });
 
+  it('truncates long multi-byte names to 8 bytes instead of failing', () => {
+    const b = build([{ name: 'héllo-wörld', path: 'programs/hello.asm' }]);
+    expect(new TextDecoder().decode(b.disk.subarray(16, 24).filter((x) => x !== 0))).toContain('h');
+  });
+
+  it('reports an empty program and overlapping data files', () => {
+    const empty = buildSystem(
+      { ...GUEST_SOURCES, 'programs/empty.asm': '; nothing here' },
+      { firmware: FIRMWARE_MAIN, kernel: KERNEL_MAIN, programs: [{ name: 'empty', path: 'programs/empty.asm' }] },
+    );
+    expect(empty.ok).toBe(false);
+    expect(empty.diagnostics.map((d) => d.message).join()).toMatch(/produced no code/);
+    const overlap = buildSystem(GUEST_SOURCES, {
+      firmware: FIRMWARE_MAIN,
+      kernel: KERNEL_MAIN,
+      programs: [],
+      dataFiles: [
+        { block: 130, bytes: new Uint8Array(600), description: 'a' },
+        { block: 132, bytes: new Uint8Array(10), description: 'b' },
+      ],
+    });
+    expect(overlap.diagnostics.map((d) => d.message).join()).toMatch(/overlaps another data file/);
+  });
+
   it('every shipped program builds', () => {
     const names = Object.keys(GUEST_SOURCES)
       .filter((p) => p.startsWith('programs/'))

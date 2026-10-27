@@ -176,6 +176,9 @@ export function buildSystem(files: Record<string, string>, config: SystemConfig)
   }
 
   for (const p of programs) {
+    if (p.result.ok && !p.result.segments.length) {
+      fail(`program ${p.spec.name}`, p.spec.path, 'program produced no code or data (is ".org PROC_BASE" missing?)');
+    }
     if (!p.result.ok || !p.result.segments.length) continue;
     const load = Math.min(...p.result.segments.map((s) => s.address));
     const img = flatten(p.result.segments, load);
@@ -201,7 +204,7 @@ export function buildSystem(files: Record<string, string>, config: SystemConfig)
   hdr[10] = placed.length;
   placed.forEach((p, i) => {
     const e = hdr.subarray(16 + i * 16, 32 + i * 16);
-    const name = new TextEncoder().encode(p.spec.name.slice(0, 8));
+    const name = new TextEncoder().encode(p.spec.name).slice(0, 8); // at most 8 bytes
     e.set(name, 0);
     e[8] = p.image!.block;
     e[9] = p.image!.count;
@@ -218,7 +221,15 @@ export function buildSystem(files: Record<string, string>, config: SystemConfig)
 
   // ---- data files ----
   const dataFiles = config.dataFiles ?? [DEFAULT_DATA_FILE];
+  const usedData = new Set<number>();
   for (const f of dataFiles) {
+    const blocks = Math.max(1, Math.ceil(f.bytes.length / DISK_BLOCK_SIZE));
+    const overlap = Array.from({ length: blocks }, (_, i) => f.block + i).some((b) => usedData.has(b));
+    for (let i = 0; i < blocks; i++) usedData.add(f.block + i);
+    if (overlap) {
+      fail('disk', '', `data file at block ${f.block} overlaps another data file`);
+      continue;
+    }
     if (f.block < DATA_AREA_BLOCK || f.block * DISK_BLOCK_SIZE + f.bytes.length > disk.length) {
       fail('disk', '', `data file at block ${f.block} is outside the data area`);
       continue;

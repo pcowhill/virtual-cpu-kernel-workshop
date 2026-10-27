@@ -105,9 +105,34 @@ fw_reset:
         ST [fw_kentry+1], R0
         LD R0, [DISK_DATA]              ; HDR_KSUM
         ST [fw_ksum], R0
+        ; ---- sanity-check the kernel layout described by the header ----
         LD R0, [fw_kcount]
         CMP R0, #0
-        JEQ fw_no_os
+        JEQ fw_no_os                    ; empty kernel
+        LD R0, [fw_kblock]
+        CMP R0, #0
+        JEQ fw_bad_layout               ; block 0 is the boot block itself
+        LD R1, [fw_kcount]
+        ADD R0, R1
+        JCS fw_bad_layout               ; first block + count runs off the disk
+        LD R0, [fw_kload]
+        CMP R0, #0
+        JNE fw_bad_layout               ; load address must be 256-byte aligned
+        LD R0, [fw_kload+1]
+        CMP R0, #KRAM_START >> 8
+        JCS fw_bad_layout               ; below kernel RAM
+        ADD R0, R1                      ; R0 = high byte of the end address
+        JCS fw_bad_layout
+        CMP R0, #FW_VARS >> 8
+        JGTU fw_bad_layout              ; would overwrite our variables and stack
+        LDW P0, [fw_kentry]             ; entry must lie inside the image
+        LDW P1, [fw_kload]
+        CMPP P0, P1
+        JCS fw_bad_layout
+        LD R4, [fw_kcount]
+        ADD R2, R4                      ; P1 = end of the image
+        CMPP P0, P1
+        JCC fw_bad_layout
 
         MOVP P2, #msg_kimage
         CALL fw_puts
@@ -252,6 +277,9 @@ fw_no_os:
 fw_bad_sum:
         MOVP P2, #msg_badsum
         JMP fw_fail
+fw_bad_layout:
+        MOVP P2, #msg_badlayout
+        JMP fw_fail
 fw_disk_error:
         PUSH R0
         MOVP P2, #msg_diskerr
@@ -295,6 +323,7 @@ msg_newline: .asciz "\n"
 msg_badmach: .asciz "\nUnknown machine ID\n"
 msg_noos:    .asciz "\nNo bootable kernel: bad boot block\n"
 msg_badsum:  .asciz "\nKernel checksum mismatch\n"
+msg_badlayout: .asciz "\nBoot block describes an invalid kernel layout\n"
 msg_diskerr: .asciz "\nStorage error, code 0x"
 msg_unexp:   .asciz "\nFIRMWARE: unexpected exception, CAUSE=0x"
 msg_halted:  .asciz "System halted.\n"

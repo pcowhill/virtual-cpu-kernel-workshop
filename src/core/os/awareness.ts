@@ -238,7 +238,7 @@ export class SchedulingTimeline {
       if (prev !== p.state && p.state === 'exited') {
         this.marker({
           cycle,
-          kind: p.faultCause ? 'fault' : 'exit',
+          kind: 'exit',
           index: p.index,
           pid: p.pid,
           detail: p.faultCause ? `killed (cause 0x${p.faultCause.toString(16)})` : `exit code ${p.exitCode}`,

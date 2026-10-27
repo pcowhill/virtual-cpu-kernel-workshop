@@ -87,9 +87,15 @@ frame pointer, load someone else's":
 1. An interrupt or system call saves the full context into a frame on the
    current process's kernel stack and records `SP` in its PCB.
 2. `schedule` scans the PCBs round robin, starting after `current`, for a READY
-   process. It marks it RUNNING, **restarts the timer** so the process gets a
-   full quantum (`QUANTUM = 2000` cycles; this also discards an expiry that
-   happened while the kernel ran, preventing interrupt livelock), and jumps to
+   process and marks it RUNNING. The timer is a fixed periodic tick
+   (`QUANTUM = 2000` cycles) that is never reloaded here, so timekeeping and
+   sleeping processes stay accurate however often processes enter the kernel. If
+   the tick expired while the kernel itself was running, `schedule` services it
+   at once (`timer_service`), so it is not taken immediately after `RTI` —
+   otherwise kernel overhead larger than a quantum could stop every process from
+   making progress (interrupt livelock). A process dispatched mid-period gets
+   the rest of that period. If tickless idle stopped the timer, `schedule`
+   restarts it. Then it jumps to
    `resume_current`.
 3. `resume_current` loads `SP` from the PCB, loads `UBASE`/`ULIMIT`, pops `USP`
    and `R7…R0`, and executes `RTI`, which restores `PSW` and `PC`.
@@ -139,7 +145,10 @@ preserved, flags are not. Definitions for programs: `src/guest/include/syscalls.
 | 9   | `sleep`   | `R1` = ticks                               | blocks for that many timer ticks (0 = yield)                                  |
 
 Error codes: `E_OK = 0`, `E_NOSYS = 1` (unknown number; `R0 = 0xFF`),
-`E_FAULT = 2`, `E_IO = 3`, `E_INVAL = 4`.
+`E_FAULT = 2`, `E_IO = 3`, `E_INVAL = 4`. With 256-block storage and 8-bit block
+numbers, `readblk` cannot actually fail with `E_IO`, and `E_INVAL` is reserved;
+both are defined for completeness. A `getc` that blocks and is retried counts as
+two system calls in the process statistics (the `SYS` really executes twice).
 
 ## Drivers
 
@@ -155,7 +164,12 @@ Error codes: `E_OK = 0`, `E_NOSYS = 1` (unknown number; `R0 = 0xFF`),
 
 - At most four processes, created at boot from the boot block; no `fork`/`exec`.
 - Fixed 8 KiB slots and bounds-checked (not relocated) addresses: programs are
-  assembled for their slot (`PROC_BASE` is predefined by the build).
+  assembled for their slot (`PROC_BASE` is predefined by the build). The kernel
+  uses a program's position in the boot block as its slot (the `PE_SLOT` field
+  is informational); the build refuses to produce a disk if any program fails.
+- The system area of the disk ends at block 128, so the kernel and programs
+  together must fit in 127 blocks (four programs that each fill their 8 KiB
+  slot would not).
 - The kernel is non-preemptive and runs with interrupts disabled; there is no
   kernel-mode concurrency.
 - The storage driver polls; the storage interrupt line exists but is unused.

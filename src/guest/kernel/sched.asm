@@ -36,16 +36,25 @@ schedule:
         JMP idle
 
 .found: ST [current], R0
-        ; Give the chosen process a full time slice: restarting the timer
-        ; (EN 0 -> 1 reloads COUNT) also discards an expiry that happened
-        ; while the kernel itself was running, so kernel overhead can never
-        ; starve a process (no interrupt livelock).
-        MOV R1, #TIMER_IE | TIMER_PERIODIC
-        ST [TIMER_CTRL], R1
-        MOV R1, #TIMER_EXPIRED
-        ST [TIMER_STATUS], R1
+        ; The timer is a fixed periodic tick (it is never reloaded here, so
+        ; timekeeping and sleepers stay accurate even when processes yield
+        ; often). If it expired while the kernel itself was running, service
+        ; that tick now; otherwise the interrupt would be taken immediately
+        ; after RTI and, if kernel work ever exceeded a quantum, no process
+        ; could make progress (interrupt livelock).
+        LD R1, [PIC_PENDING]
+        AND R1, #IRQ_TIMER
+        JEQ .nopend
+        PUSH R0
+        CALL timer_service              ; acknowledges, counts the tick, wakes sleepers
+        POP R0
+.nopend:
+        LD R1, [TIMER_CTRL]             ; tickless idle may have stopped the timer:
+        AND R1, #TIMER_EN
+        JNE .ticking
         MOV R1, #TIMER_EN | TIMER_IE | TIMER_PERIODIC
-        ST [TIMER_CTRL], R1
+        ST [TIMER_CTRL], R1             ; restart it (EN 0 -> 1 reloads COUNT)
+.ticking:
         MOV R1, #ST_RUNNING
         ST [P3+PCB_STATE], R1
         LDW P0, [P3+PCB_RUNS]

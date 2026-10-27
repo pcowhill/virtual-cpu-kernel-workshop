@@ -6,18 +6,18 @@ of the storage medium before power-on — exactly what a real machine has when y
 switch it on. It never copies the kernel into RAM and never starts a process.
 
 Source files: [`src/guest/firmware/bios.asm`](../../src/guest/firmware/bios.asm),
-[`src/guest/kernel/`](../../src/guest/kernel). Numbers below are for the default
-build (`hello` + `spinner`) at the time of writing; addresses move if you edit the
+[`src/guest/kernel/`](../../src/guest/kernel). Numbers below are for a build with the
+programs `hello` and `spinner` at the time of writing; addresses move if you edit the
 sources, which is why the workbench always shows symbols.
 
 ## 1. What exists at power-on
 
-| Component                | Contents                                                                              |
-| ------------------------ | ------------------------------------------------------------------------------------- |
-| Boot ROM `0x0000–0x1FFF` | the assembled firmware (976 bytes): a vector table at `0x0000` and code from `0x0040` |
-| RAM `0x2000–0xEFFF`      | all zero                                                                              |
-| Storage                  | a disk image built by the workstation: boot block, kernel, programs, data             |
-| CPU                      | reset state: supervisor mode, interrupts off, `VBASE = 0x0000`                        |
+| Component                | Contents                                                                                |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| Boot ROM `0x0000–0x1FFF` | the assembled firmware (1 105 bytes): a vector table at `0x0000` and code from `0x0040` |
+| RAM `0x2000–0xEFFF`      | all zero                                                                                |
+| Storage                  | a disk image built by the workstation: boot block, kernel, programs, data               |
+| CPU                      | reset state: supervisor mode, interrupts off, `VBASE = 0x0000`                          |
 
 The boot disk layout (all built by `src/core/build/system.ts`):
 
@@ -35,7 +35,7 @@ Boot block fields are defined in `src/guest/include/vc8.inc` (`HDR_*`, `PE_*`).
 The CPU's reset sequence is five micro-operations: `MAR ← 0x0000`, read the low
 byte, `MAR ← MAR + 1`, read the high byte, `PC ← 0x0040`. Entry 0 of the ROM's
 vector table is the address of `fw_reset`. Step it with **micro-step** in the
-Datapath lab to watch each bus transaction.
+workbench's Datapath lab (milestone 3) to watch each bus transaction.
 
 ## 3. Firmware (cycles 5 – ~132 000, ~21 800 instructions)
 
@@ -69,12 +69,19 @@ Datapath lab to watch each bus transaction.
 
 8. Compares the checksum with the boot block's, prints `checksum OK`.
 9. `LDW P0, [fw_kentry]` then `JMP P0` — control reaches `kernel_entry`
-   (`0x2000`) at about cycle 132 177, still in supervisor mode with interrupts
+   (`0x2000`) at about cycle 132 339, still in supervisor mode with interrupts
    disabled.
 
-Failure paths (bad magic, checksum mismatch, storage error, unexpected
-exception) print a message and halt with every interrupt line masked. The
-integration tests in `tests/integration/boot.test.ts` exercise them.
+Before copying, the firmware also checks the layout the boot block describes:
+the kernel must start after block 0 and end within the disk, load at a
+256-byte-aligned address inside kernel RAM below the firmware's own variables
+(`0x5F00`), and have its entry point inside the image.
+
+Failure paths (bad magic or version, invalid layout, checksum mismatch, storage
+error, unexpected exception) print a message and halt with every interrupt line
+masked. `tests/integration/boot.test.ts` exercises the bad-magic, invalid-layout,
+checksum and empty-disk paths; the storage-error and unexpected-exception paths
+cannot be reached with a valid layout on this hardware and are not tested.
 
 ## 4. Kernel initialisation (to ~cycle 200 000)
 
@@ -98,7 +105,7 @@ integration tests in `tests/integration/boot.test.ts` exercise them.
    the keyboard interrupt, unmasks lines 0 and 1 in the interrupt controller.
 7. Jumps to `schedule`.
 
-## 5. The first user instruction (~cycle 200 430)
+## 5. The first user instruction (~cycle 200 847)
 
 `schedule` picks process 0 (round robin from "none"), marks it RUNNING, restarts
 the timer for a full time slice and jumps to `resume_current`, which:
@@ -119,7 +126,7 @@ RTI                     ; PSW = 0x40 -> user mode; PC = 0x6000
 and execution continues at `0x6000`, the first instruction of `hello`. From here
 on the CPU's protection unit only lets this code touch `0x6000–0x7FFF`.
 
-## 6. The first system call (~cycle 200 456)
+## 6. The first system call (~cycle 200 873)
 
 `hello` executes `SYS` with `R0 = 2` (puts) and `P1` pointing at its greeting:
 

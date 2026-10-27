@@ -83,6 +83,34 @@ describe('authentic boot sequence', () => {
     expect(m.cpu.pc).toBeLessThanOrEqual(MEM.ROM_END);
   });
 
+  it.each([
+    ['a load address that would overwrite the firmware stack', 6, 0x5e],
+    ['a load address in device space', 6, 0xef],
+    ['a kernel that runs off the end of the disk', 3, 250],
+    ['a kernel starting at the boot block', 3, 0],
+  ])('firmware rejects %s', (_name, offset, value) => {
+    const b = build([prog('hello')]);
+    const disk = b.disk.slice();
+    disk[offset] = value;
+    const m = new Machine();
+    m.powerOn({ rom: b.rom, disk });
+    const res = m.run(2_000_000);
+    expect(res.reason).toBe('halted');
+    expect(m.terminal.text()).toContain('Boot block describes an invalid kernel layout');
+    expect(m.timer.ctrl).toBe(0);
+    expect(m.gpio.leds).toBe(0);
+  });
+
+  it('firmware detects a kernel area that holds no kernel (checksum over the blocks it read)', () => {
+    const b = build([prog('hello')]);
+    const disk = b.disk.slice();
+    disk[3] = 200; // kernel at block 200..211: valid layout, but the blocks are empty
+    const m = new Machine();
+    m.powerOn({ rom: b.rom, disk });
+    m.run(2_000_000);
+    expect(m.terminal.text()).toContain('Kernel checksum mismatch');
+  });
+
   it('boots with an empty storage medium only as far as the firmware', () => {
     const b = build([prog('hello')]);
     const m = new Machine();

@@ -99,6 +99,40 @@ describe('system calls', () => {
     expect(out(m)).toContain("'reader' exited with code 0");
   });
 
+  it('sleepers still wake while another process enters the kernel more often than the timer period', () => {
+    const { m, b } = boot([prog('blinker'), prog('yielder')]);
+    const leds: number[] = [];
+    m.bus.observer = (addr, kind, value) => {
+      if (kind === 'write' && addr === 0xf050) leds.push(value);
+    };
+    const res = runToHalt(m, 20_000_000);
+    expect(res.reason).toBe('halted');
+    expect(leds.slice(0, 9)).toEqual([1, 2, 4, 8, 16, 32, 64, 128, 1]);
+    expect(out(m)).toContain("'blinker' exited with code 0");
+    expect(out(m)).toContain("'yielder' exited with code 0");
+    expect(m.bus.peekWord(b.kernelSymbols['ticks']!)).toBeGreaterThanOrEqual(32);
+  });
+
+  it('puts writes at most 255 characters and returns the count', () => {
+    const src = `
+        .include "syscalls.inc"
+        .org PROC_BASE
+start:  MOVP P1, #text
+        MOV R0, #SYS_PUTS
+        SYS
+        MOV R1, R0
+        MOV R0, #SYS_EXIT
+        SYS
+text:   .fill 300, 'x'
+        .byte 0
+`;
+    const { m } = boot([{ name: 'long', path: 'programs/long.asm' }], { 'programs/long.asm': src });
+    runToHalt(m);
+    expect(out(m)).toContain('x'.repeat(255) + '[kernel]');
+    expect(out(m)).not.toContain('x'.repeat(256));
+    expect(out(m)).toContain("'long' exited with code 255");
+  });
+
   it('drives the LEDs and sleeps on timer ticks', () => {
     const { m, b } = boot([prog('blinker')]);
     const patterns: number[] = [];
@@ -231,7 +265,7 @@ describe('protection and faults', () => {
 });
 
 describe('keyboard input and blocking', () => {
-  it('a blocked reader uses no CPU and is woken by the keyboard interrupt', () => {
+  it('a blocked reader uses no CPU and is woken when a key arrives (idle poll of the keyboard line)', () => {
     const { m, b } = boot([prog('echo')]);
     m.run(1_000_000);
     const ps = processes(m, b.kernelSymbols);
