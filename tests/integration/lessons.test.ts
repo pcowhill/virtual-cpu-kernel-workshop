@@ -15,7 +15,7 @@ import {
   type LessonContext,
   type LessonDriver,
 } from '../../src/lessons/engine';
-import { buildProject, defaultProject, type BuildOutput, type Project } from '../../src/app/project';
+import { buildProject, defaultProject, hashSources, type BuildOutput, type Project } from '../../src/app/project';
 import { defaultDebugSettings } from '../../src/app/store';
 import { MachineController } from '../../src/host/controller';
 import { EXAMPLES } from '../../src/catalog/examples';
@@ -30,7 +30,12 @@ class TestDriver implements LessonDriver {
   private wps: [number, 'r' | 'w' | 'rw'][] = [];
 
   ctx(): LessonContext {
-    return { view: this.ctl.view(), build: this.out, project: this.project, loadedHash: this.loadedHash };
+    return {
+      view: this.ctl.view(),
+      build: this.out,
+      project: this.project,
+      sourcesMatchLoaded: this.loadedHash === hashSources(this.project),
+    };
   }
   setup(lesson: Lesson): Promise<boolean> {
     applySetup(this.project, lesson.setup);
@@ -89,7 +94,11 @@ describe('guided lessons', () => {
       expect(l.steps.length).toBeGreaterThan(1);
       expect(l.experiments.length).toBeGreaterThan(0);
       expect(l.observations.length).toBeGreaterThan(0);
-      for (const id of l.examples ?? []) expect(EXAMPLES.some((e) => e.id === id), `${l.id}: example ${id}`).toBe(true);
+      for (const id of l.examples ?? [])
+        expect(
+          EXAMPLES.some((e) => e.id === id),
+          `${l.id}: example ${id}`,
+        ).toBe(true);
       // Every step is checked against the machine, and all but read-only steps can be demonstrated.
       for (const s of l.steps) expect(s.check, `${l.id}: ${s.title}`).toBeDefined();
     }

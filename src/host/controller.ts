@@ -169,6 +169,8 @@ export class MachineController {
         return m.events.toArray();
       case 'getDisk':
         return m.storage.image.slice();
+      case 'sync':
+        return null;
       case 'runDeterministic': {
         this.runState = 'paused';
         this.setRunUntil(null);

@@ -2,6 +2,8 @@
 import { computed, onBeforeUnmount, onMounted, watchEffect, type Component } from 'vue';
 import { useStore, type LabId } from './app/store';
 import ControlBar from './ui/components/ControlBar.vue';
+import LessonGuide from './ui/components/LessonGuide.vue';
+import { useLessons } from './app/lessons';
 import RegisterPanel from './ui/components/RegisterPanel.vue';
 import TerminalPanel from './ui/components/TerminalPanel.vue';
 import StartLab from './ui/labs/StartLab.vue';
@@ -20,6 +22,7 @@ import ExamplesLab from './ui/labs/ExamplesLab.vue';
 import WorkspacesLab from './ui/labs/WorkspacesLab.vue';
 
 const s = useStore();
+const lessons = useLessons();
 
 const LABS: { id: LabId; label: string; icon: string; component: Component; group: string }[] = [
   { id: 'start', label: 'Start', icon: '⌂', component: StartLab, group: 'Workbench' },
@@ -125,6 +128,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
         </div>
       </nav>
       <main class="content" :aria-label="active.label">
+        <LessonGuide v-if="lessons.active.value" />
         <KeepAlive>
           <component :is="active.component" :key="active.id" />
         </KeepAlive>
@@ -244,6 +248,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 .content {
   overflow: auto;
   min-width: 0;
+}
+.content > .guide {
+  margin: 0.75rem 0.75rem 0;
 }
 .dock {
   border-left: 1px solid var(--border);

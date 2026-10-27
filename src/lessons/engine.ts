@@ -13,9 +13,7 @@ import type { ProgramSpec } from '../core/build/system';
 import type { Command, MachineView } from '../host/protocol';
 import { DISK_BLOCK_SIZE, PSW } from '../core/isa/constants';
 
-export type LessonSetup =
-  | { kind: 'bare'; file: string }
-  | { kind: 'os'; programs: ProgramSpec[] };
+export type LessonSetup = { kind: 'bare'; file: string } | { kind: 'os'; programs: ProgramSpec[] };
 
 export type FlagName = 'C' | 'Z' | 'N' | 'V' | 'I' | 'S';
 const FLAG_BITS: Record<FlagName, number> = { C: PSW.C, Z: PSW.Z, N: PSW.N, V: PSW.V, I: PSW.I, S: PSW.S };
@@ -104,10 +102,11 @@ export interface Lesson {
 
 export interface LessonContext {
   view: MachineView | null;
+  /** The build the machine is running (symbols resolve against it). */
   build: BuildOutput | null;
   project: Project;
-  /** Hash of the sources of the loaded machine and of the current sources. */
-  loadedHash: string | null;
+  /** The current sources are exactly the ones the loaded machine was built from. */
+  sourcesMatchLoaded: boolean;
 }
 
 export function resolveWhere(at: Where, build: BuildOutput | null): number | undefined {
@@ -134,12 +133,7 @@ export function evaluateLessonCheck(check: LessonCheck, ctx: LessonContext): boo
   const v = ctx.view;
   if (check.kind === 'all') return check.checks.every((c) => evaluateLessonCheck(c, ctx));
   if (check.kind === 'sourceLoaded')
-    return (
-      !!v?.loaded &&
-      ctx.loadedHash !== null &&
-      ctx.build?.sourceHash === ctx.loadedHash &&
-      (ctx.project.files[check.file] ?? '').includes(check.text)
-    );
+    return !!v?.loaded && ctx.sourcesMatchLoaded && (ctx.project.files[check.file] ?? '').includes(check.text);
   if (!v || !v.loaded) return false;
   switch (check.kind) {
     case 'loaded':
@@ -173,7 +167,9 @@ export function evaluateLessonCheck(check: LessonCheck, ctx: LessonContext): boo
     case 'userCyclesAtLeast':
       return v.modeCycles.user >= check.cycles;
     case 'exceptionSeen':
-      return v.events.filter((e) => e.type === 'exception' && e.vector === check.vector).length >= (check.minCount ?? 1);
+      return (
+        v.events.filter((e) => e.type === 'exception' && e.vector === check.vector).length >= (check.minCount ?? 1)
+      );
     case 'pendingException':
       return v.runState === 'paused' && v.cpu.pendingException?.vector === check.vector;
     case 'process': {
@@ -248,7 +244,9 @@ export function describeCheck(check: LessonCheck): string {
     case 'savedFrames':
       return `at least ${check.count} processes have a saved context in their kernel stack`;
     case 'kernelInRam':
-      return check.bytes ? `at least ${check.bytes} kernel bytes have been copied into RAM` : 'the whole kernel image is in RAM';
+      return check.bytes
+        ? `at least ${check.bytes} kernel bytes have been copied into RAM`
+        : 'the whole kernel image is in RAM';
     case 'process':
       return `process “${check.name}”${check.state ? ` is ${check.state}` : ''}${
         check.dispatchesAtLeast ? ` has been dispatched at least ${check.dispatchesAtLeast} times` : ''

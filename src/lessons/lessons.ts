@@ -121,7 +121,13 @@ immediate), so you will see three memory reads before the register write. PC end
         title: 'The ALU at work',
         body: `Step \`MOV R1, #10\` and \`ADD R0, R1\` with µStep. During ADD the ALU is highlighted with its inputs and
 result, and the flags it produced. R0 becomes 0x0A.`,
-        check: { kind: 'all', checks: [{ kind: 'reg', reg: 'R0', value: 0x0a }, { kind: 'pausedAt', at: 0x0108 }] },
+        check: {
+          kind: 'all',
+          checks: [
+            { kind: 'reg', reg: 'R0', value: 0x0a },
+            { kind: 'pausedAt', at: 0x0108 },
+          ],
+        },
         solution: [{ do: 'step', count: 2 }],
       },
     ],
@@ -160,7 +166,8 @@ four operations and copies the flags after each into RAM at 0x2000–0x2003.`,
       },
       {
         title: '127 + 1',
-        body: `Step three instructions: set up the stack, \`MOV R0, #0x7F\` and \`ADD R0, #1\`. 0x7F + 1 = 0x80: as unsigned
+        body: `Step five instructions: set up the stack, clear the result counter (two instructions), \`MOV R0, #0x7F\` and
+\`ADD R0, #1\`. 0x7F + 1 = 0x80: as unsigned
 numbers 127 + 1 = 128 is fine (no carry), but as signed numbers +127 + 1 cannot be +128 — so **V** is set, and
 **N** is set because bit 7 is 1.`,
         check: {
@@ -172,7 +179,7 @@ numbers 127 + 1 = 128 is fine (no carry), but as signed numbers +127 + 1 cannot 
             { kind: 'flag', flag: 'C', set: false },
           ],
         },
-        solution: [{ do: 'step', count: 3 }],
+        solution: [{ do: 'step', count: 5 }],
       },
       {
         title: 'All four results',
@@ -218,7 +225,13 @@ decide differently. *conditional-loop* counts table entries greater than 50 both
       {
         title: 'Run to the loop',
         body: 'Run to the label `next` (set a breakpoint in the editor gutter, or step). R4 counts the entries left: 5.',
-        check: { kind: 'all', checks: [{ kind: 'pausedAt', at: 'next' }, { kind: 'reg', reg: 'R4', value: 5 }] },
+        check: {
+          kind: 'all',
+          checks: [
+            { kind: 'pausedAt', at: 'next' },
+            { kind: 'reg', reg: 'R4', value: 5 },
+          ],
+        },
         solution: [
           { do: 'step', count: 1 },
           { do: 'runTo', at: 'next' },
@@ -284,7 +297,13 @@ the copy. A **watchpoint** stops execution right after an instruction accesses a
         body: `In the Memory lab, go to \`0x2100\`, click the byte and **Add watchpoint** (write). Then **Run**. The machine
 stops right after the first store into the buffer.`,
         lab: 'memory',
-        check: { kind: 'all', checks: [{ kind: 'stopped', reason: 'watchpoint' }, { kind: 'mem', at: 0x2100, value: 0x54 }] },
+        check: {
+          kind: 'all',
+          checks: [
+            { kind: 'stopped', reason: 'watchpoint' },
+            { kind: 'mem', at: 0x2100, value: 0x54 },
+          ],
+        },
         hint: '0x54 is the character "T", the first letter of the string.',
         solution: [
           { do: 'watch', at: 0x2100, access: 'w' },
@@ -301,7 +320,10 @@ stops right after the first store into the buffer.`,
             { kind: 'terminalIncludes', text: 'This string was copied from ROM to RAM 0x2100.' },
           ],
         },
-        solution: [{ do: 'unwatch', at: 0x2100 }, { do: 'run', cycles: 100_000 }],
+        solution: [
+          { do: 'unwatch', at: 0x2100 },
+          { do: 'run', cycles: 100_000 },
+        ],
       },
     ],
     experiments: [
@@ -444,7 +466,13 @@ the keyboard's DATA removes a key), so the workbench's views use side-effect-fre
         body: `Step four more instructions: LD STATUS, AND, JEQ (not taken: the terminal is ready) and the ST to DATA.
 Exactly one character appears in the terminal, and the Devices lab counts one byte written.`,
         lab: 'devices',
-        check: { kind: 'all', checks: [{ kind: 'terminalIncludes', text: 'H' }, { kind: 'instructionsAtLeast', count: 6 }] },
+        check: {
+          kind: 'all',
+          checks: [
+            { kind: 'terminalIncludes', text: 'H' },
+            { kind: 'instructionsAtLeast', count: 6 },
+          ],
+        },
         solution: [{ do: 'step', count: 4 }],
       },
       {
@@ -512,9 +540,16 @@ equals the address of \`fw_reset\`, and the CPU is in supervisor mode.`,
 RAM still holds the kernel the firmware copied.`,
         check: {
           kind: 'all',
-          checks: [{ kind: 'pausedAt', at: 'fw_reset' }, { kind: 'cyclesAtLeast', cycles: 10_000 }, { kind: 'kernelInRam' }],
+          checks: [
+            { kind: 'pausedAt', at: 'fw_reset' },
+            { kind: 'cyclesAtLeast', cycles: 10_000 },
+            { kind: 'kernelInRam' },
+          ],
         },
-        solution: [{ do: 'command', command: { type: 'reset' } }, { do: 'step', count: 1 }],
+        solution: [
+          { do: 'command', command: { type: 'reset' } },
+          { do: 'step', count: 1 },
+        ],
       },
     ],
     experiments: ['Press Power instead of Reset. What happens to RAM and the cycle counter?'],
@@ -547,7 +582,13 @@ address. It checks a checksum and jumps to the kernel entry point.`,
         title: 'The first kernel byte',
         body: `Add a write watchpoint on 0x2000 (Boot lab: **Watch first kernel byte being written**) and run. The CPU
 stops right after the store that puts the first kernel byte into RAM.`,
-        check: { kind: 'all', checks: [{ kind: 'stopped', reason: 'watchpoint' }, { kind: 'kernelInRam', bytes: 1 }] },
+        check: {
+          kind: 'all',
+          checks: [
+            { kind: 'stopped', reason: 'watchpoint' },
+            { kind: 'kernelInRam', bytes: 1 },
+          ],
+        },
         solution: [
           { do: 'watch', at: 0x2000, access: 'w' },
           { do: 'run', cycles: 1_000_000 },
@@ -586,7 +627,13 @@ a program by building an exception frame whose saved PSW has S = 0 and executing
         body: `Run to address 0x6000, the start of the first program's slot. The PSW's S flag is clear: the CPU is in user
 mode, and UBASE/ULIMIT (CPU lab) delimit the program's window.`,
         lab: 'cpu',
-        check: { kind: 'all', checks: [{ kind: 'pausedAt', at: 0x6000 }, { kind: 'mode', mode: 'user' }] },
+        check: {
+          kind: 'all',
+          checks: [
+            { kind: 'pausedAt', at: 0x6000 },
+            { kind: 'mode', mode: 'user' },
+          ],
+        },
         solution: [{ do: 'runTo', at: 0x6000, maxCycles: 1_000_000 }],
       },
       {
@@ -596,7 +643,10 @@ programs, the kernel and idle, and lists the SYS traps (vector 4) the programs m
         lab: 'kernel',
         check: {
           kind: 'all',
-          checks: [{ kind: 'userCyclesAtLeast', cycles: 20_000 }, { kind: 'exceptionSeen', vector: 4, minCount: 5 }],
+          checks: [
+            { kind: 'userCyclesAtLeast', cycles: 20_000 },
+            { kind: 'exceptionSeen', vector: 4, minCount: 5 },
+          ],
         },
         solution: [{ do: 'run', cycles: 100_000 }],
       },
@@ -624,7 +674,13 @@ puts a request number in R0 and a character in R1.`,
       {
         title: 'Into user mode',
         body: 'Run to `user`: the supervisor built a frame and executed RTI into user mode.',
-        check: { kind: 'all', checks: [{ kind: 'pausedAt', at: 'user' }, { kind: 'mode', mode: 'user' }] },
+        check: {
+          kind: 'all',
+          checks: [
+            { kind: 'pausedAt', at: 'user' },
+            { kind: 'mode', mode: 'user' },
+          ],
+        },
         solution: [
           { do: 'step', count: 1 },
           { do: 'runTo', at: 'user' },
@@ -738,7 +794,13 @@ program, *blinker*, which walks a light across the LEDs and finally switches the
       {
         title: 'The original driver',
         body: 'Run the system until blinker exits. The LEDs end all off.',
-        check: { kind: 'all', checks: [{ kind: 'process', name: 'blinker', exitCode: 0 }, { kind: 'leds', value: 0 }] },
+        check: {
+          kind: 'all',
+          checks: [
+            { kind: 'process', name: 'blinker', exitCode: 0 },
+            { kind: 'leds', value: 0 },
+          ],
+        },
         solution: [{ do: 'run', cycles: 600_000 }],
       },
       {
@@ -766,7 +828,7 @@ again. Every pattern is inverted — and at the end all LEDs are on, although bl
         ],
       },
     ],
-    experiments: ["Change `kputc` so that the kernel prints every character twice. Which output is affected?"],
+    experiments: ['Change `kputc` so that the kernel prints every character twice. Which output is affected?'],
     observations: ['The kernel is ordinary source code: rebuilding writes a new kernel image to the boot disk.'],
     examples: ['os-interactive'],
   },
@@ -844,7 +906,13 @@ saved context. Switching processes means switching kernel stacks; \`resume_curre
         title: 'A timer interrupt arrives',
         body: 'Run to `timer_interrupt`, the kernel code that runs after a timer IRQ has saved the context.',
         lab: 'kernel',
-        check: { kind: 'all', checks: [{ kind: 'pausedAt', at: 'timer_interrupt' }, { kind: 'exceptionSeen', vector: 8 }] },
+        check: {
+          kind: 'all',
+          checks: [
+            { kind: 'pausedAt', at: 'timer_interrupt' },
+            { kind: 'exceptionSeen', vector: 8 },
+          ],
+        },
         solution: [{ do: 'runTo', at: 'timer_interrupt', maxCycles: 1_000_000 }],
       },
       {
@@ -852,7 +920,13 @@ saved context. Switching processes means switching kernel stacks; \`resume_curre
         body: `Run for a while and pause. In the Processes lab, every process that is not on the CPU shows its saved PC,
 user SP, R0–R7 and PSW, decoded from its trap frame in kernel memory.`,
         lab: 'processes',
-        check: { kind: 'all', checks: [{ kind: 'savedFrames', count: 2 }, { kind: 'ticksAtLeast', ticks: 25 }] },
+        check: {
+          kind: 'all',
+          checks: [
+            { kind: 'savedFrames', count: 2 },
+            { kind: 'ticksAtLeast', ticks: 25 },
+          ],
+        },
         solution: [{ do: 'run', cycles: 60_000 }],
       },
       {
@@ -869,7 +943,7 @@ user SP, R0–R7 and PSW, decoded from its trap frame in kernel memory.`,
       },
     ],
     experiments: ['In `kernel/trap.asm`, find where R7 is pushed. What would happen if one register were skipped?'],
-    observations: ['The trap frame lives at the top of each process\'s kernel stack, not in user memory.'],
+    observations: ["The trap frame lives at the top of each process's kernel stack, not in user memory."],
     examples: ['os-regcheck'],
   },
   {
