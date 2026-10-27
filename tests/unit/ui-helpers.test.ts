@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderMarkdown } from '../../src/ui/markdown';
 import { highlightLine } from '../../src/ui/highlight';
-import { parseAddress, flagsString, signed8 } from '../../src/ui/format';
+import { parseAddress, parseValue, flagsString, signed8 } from '../../src/ui/format';
 
 describe('markdown renderer', () => {
   it('renders headings, lists, tables, code and inline formatting', () => {
@@ -68,6 +68,16 @@ describe('format helpers', () => {
     expect(parseAddress('add2', (n) => (n === 'add2' ? 0x10f : undefined))).toBe(0x10f);
     expect(parseAddress('add2')).toBe(0xadd2);
     expect(parseAddress('nope')).toBeNull();
+  });
+  it('parses register values (decimal by default)', () => {
+    expect(parseValue('42')).toBe(42);
+    expect(parseValue('0x2A')).toBe(0x2a);
+    expect(parseValue('$ff')).toBe(0xff);
+    expect(parseValue('2Ah')).toBe(0x2a);
+    expect(parseValue('0b101')).toBe(5);
+    expect(parseValue('-2')).toBe(0xfffe);
+    expect(parseValue('70000')).toBeNull();
+    expect(parseValue('abc')).toBeNull();
   });
   it('formats flags and signed values', () => {
     expect(flagsString(0x80 | 0x40 | 0x03)).toBe('SI--ZC');

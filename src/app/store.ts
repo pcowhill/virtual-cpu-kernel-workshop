@@ -87,7 +87,9 @@ function createStore() {
     // Change highlighting compares against the previous *machine state*: views
     // published for debugger-setting commands (same cycle) must not erase it.
     const cur = view.value;
-    if (!cur || cur.cycle !== v.cycle || cur.label !== v.label || cur.instructions !== v.instructions)
+    // A power-on state (cycle 0) is its own baseline: nothing is highlighted.
+    if (v.cycle === 0) prevView.value = v;
+    else if (!cur || cur.cycle !== v.cycle || cur.label !== v.label || cur.instructions !== v.instructions)
       prevView.value = cur;
     view.value = v;
   });

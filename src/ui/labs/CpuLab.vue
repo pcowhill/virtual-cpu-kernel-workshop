@@ -5,7 +5,7 @@ import RegisterPanel from '../components/RegisterPanel.vue';
 import DisassemblyView from '../components/DisassemblyView.vue';
 import MicroOpList from '../components/MicroOpList.vue';
 import TraceTable from '../components/TraceTable.vue';
-import { parseAddress } from '../format';
+import { parseValue } from '../format';
 
 const s = useStore();
 const regName = ref('R0');
@@ -13,9 +13,9 @@ const regValue = ref('');
 const view = computed(() => s.view.value);
 
 function setReg(): void {
-  const v = parseAddress(regValue.value);
+  const v = parseValue(regValue.value);
   if (v === null) {
-    s.notify('error', 'Enter a number such as 0x2A or 42.');
+    s.notify('error', 'Enter a number such as 42, -2, 0x2A or 0b101010.');
     return;
   }
   s.send({ type: 'setRegister', name: regName.value, value: v });
@@ -67,7 +67,7 @@ function setReg(): void {
                 {{ r }}
               </option>
             </select>
-            <input v-model="regValue" type="text" placeholder="0x00" aria-label="Value" />
+            <input v-model="regValue" type="text" placeholder="42 or 0x2A" aria-label="Value" />
             <button class="btn small" type="submit" :disabled="view?.runState === 'running'">Set</button>
           </form>
           <p class="body faint small">

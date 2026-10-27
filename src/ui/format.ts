@@ -39,6 +39,22 @@ export function parseAddress(text: string, lookup?: (name: string) => number | u
   return null;
 }
 
+/**
+ * Parse a register value typed by the user: decimal by default (42, -2),
+ * hexadecimal with 0x/$ or an h suffix, binary with 0b. Returns null if invalid.
+ */
+export function parseValue(text: string): number | null {
+  const t = text.trim();
+  let m = /^(-?)(?:0x|\$)([0-9a-f]+)$/i.exec(t) ?? /^(-?)([0-9a-f]+)h$/i.exec(t);
+  let v: number;
+  if (m) v = parseInt(m[2]!, 16);
+  else if ((m = /^(-?)0b([01]+)$/i.exec(t))) v = parseInt(m[2]!, 2);
+  else if ((m = /^(-?)([0-9]+)$/.exec(t))) v = Number(m[2]);
+  else return null;
+  if (v > 0xffff) return null;
+  return m[1] ? -v & 0xffff : v;
+}
+
 export function formatCycles(c: number): string {
   return c.toLocaleString('en-US');
 }
