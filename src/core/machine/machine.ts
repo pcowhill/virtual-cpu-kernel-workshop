@@ -453,16 +453,24 @@ export class Machine {
 
   /**
    * Run until a stop condition or until `maxCycles` cycles have elapsed.
-   * Breakpoints stop *before* the instruction at the breakpoint address executes;
-   * the instruction under the PC when run() is called is never treated as a breakpoint.
+   * Breakpoints stop *before* the instruction at the breakpoint address executes.
+   * On a fresh run the instruction under the PC when run() is called is never
+   * treated as a breakpoint (so "run" resumes past one); continuation slices of
+   * the same run pass fresh = false.
    */
-  run(maxCycles: number, maxInstructions = Infinity): RunResult {
+  run(maxCycles: number, maxInstructions = Infinity, fresh = true): RunResult {
     const startCycle = this.cycle;
     const startInstr = this.instructions;
     const cpu = this.cpu;
-    this.watchTriggered = false;
-    this.exceptionTriggered = false;
-    let first = true;
+    // A fresh run resumes past a breakpoint at the current PC. A continuation
+    // slice (fresh = false) of the same run must not: it may start exactly at
+    // an instruction boundary, and it keeps watch/fault stops detected
+    // mid-instruction in the previous slice.
+    if (fresh) {
+      this.watchTriggered = false;
+      this.exceptionTriggered = false;
+    }
+    let first = fresh;
     const hasBreakpoints = () => this.breakpoints.size > 0;
     while (this.cycle - startCycle < maxCycles) {
       if (cpu.halted) {

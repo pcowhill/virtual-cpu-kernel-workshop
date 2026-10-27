@@ -426,6 +426,7 @@ export function conditionHolds(cond: number, psw: number): boolean {
 
 const BRANCH = op('BRANCH', 'if condition(PSW): PC ← IMM', U.FLAGS | U.PC | U.IMM | U.DECODER, (c) => {
   if (conditionHolds(c.def!.cond!, c.psw)) c.pc = c.imm;
+  else c.activity.units &= ~U.PC; // not taken: PC keeps its value
 });
 
 const JMP_W = op('EXECUTE', 'PC ← Wa', U.PC | U.REGISTERS | U.SP, (c) => {
