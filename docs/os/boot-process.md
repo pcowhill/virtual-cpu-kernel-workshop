@@ -14,7 +14,7 @@ sources, which is why the workbench always shows symbols.
 
 | Component                | Contents                                                                                |
 | ------------------------ | --------------------------------------------------------------------------------------- |
-| Boot ROM `0x0000–0x1FFF` | the assembled firmware (1 105 bytes): a vector table at `0x0000` and code from `0x0040` |
+| Boot ROM `0x0000–0x1FFF` | the assembled firmware (1 111 bytes): a vector table at `0x0000` and code from `0x0040` |
 | RAM `0x2000–0xEFFF`      | all zero                                                                                |
 | Storage                  | a disk image built by the workstation: boot block, kernel, programs, data               |
 | CPU                      | reset state: supervisor mode, interrupts off, `VBASE = 0x0000`                          |
@@ -105,10 +105,11 @@ cannot be reached with a valid layout on this hardware and are not tested.
    the keyboard interrupt, unmasks lines 0 and 1 in the interrupt controller.
 7. Jumps to `schedule`.
 
-## 5. The first user instruction (~cycle 200 847)
+## 5. The first user instruction (~cycle 200 939)
 
-`schedule` picks process 0 (round robin from "none"), marks it RUNNING, restarts
-the timer for a full time slice and jumps to `resume_current`, which:
+`schedule` picks process 0 (round robin from "none"), marks it RUNNING (the
+timer was started at the end of initialisation and keeps ticking) and jumps to
+`resume_current`, which:
 
 ```asm
 LDW SP, [P3+PCB_KSP]    ; the process's kernel stack (its frame)
@@ -126,7 +127,7 @@ RTI                     ; PSW = 0x40 -> user mode; PC = 0x6000
 and execution continues at `0x6000`, the first instruction of `hello`. From here
 on the CPU's protection unit only lets this code touch `0x6000–0x7FFF`.
 
-## 6. The first system call (~cycle 200 873)
+## 6. The first system call (~cycle 200 965)
 
 `hello` executes `SYS` with `R0 = 2` (puts) and `P1` pointing at its greeting:
 

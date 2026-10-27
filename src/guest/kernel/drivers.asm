@@ -25,6 +25,9 @@ led_set:
 timer_service:
         MOV R0, #TIMER_EXPIRED
         ST [TIMER_STATUS], R0           ; acknowledge: deasserts IRQ line 0
+        ; fall through
+; timer_tick: count one tick and wake sleepers. Changes R0, R1, P0. Preserves P3.
+timer_tick:
         LDW P0, [ticks]
         INCP P0
         STW [ticks], P0
@@ -49,6 +52,37 @@ timer_service:
         DEC R0
         JNE .loop
         POPP P3
+        RET
+
+; timer_restart: give the next process a full quantum without losing time.
+; Stops the timer (COUNT freezes), counts an expiry that happened while the
+; kernel was running, adds the part of the current period that has already
+; elapsed to tick_acc (counting a tick whenever that reaches QUANTUM), then
+; restarts the timer: EN 0 -> 1 reloads COUNT with QUANTUM.
+; Changes R0-R3, P0. Preserves P3.
+timer_restart:
+        MOV R0, #TIMER_IE | TIMER_PERIODIC
+        ST [TIMER_CTRL], R0             ; stop
+        LD R0, [TIMER_STATUS]
+        AND R0, #TIMER_EXPIRED
+        JEQ .partial
+        CALL timer_service              ; a whole period ended during kernel work
+.partial:
+        MOVP P1, #QUANTUM
+        LD R1, [TIMER_COUNT_LO]
+        LD R0, [TIMER_COUNT_HI]         ; P0 = COUNT (frozen)
+        SUBP P1, P0                     ; P1 = cycles of this period already used
+        LDW P0, [tick_acc]
+        ADDP P0, P1
+        CMPP P0, #QUANTUM
+        JCS .keep                       ; less than a whole tick so far
+        ADDP P0, #-QUANTUM
+        STW [tick_acc], P0
+        CALL timer_tick                 ; the partial periods add up to a tick
+        JMP .start
+.keep:  STW [tick_acc], P0
+.start: MOV R0, #TIMER_EN | TIMER_IE | TIMER_PERIODIC
+        ST [TIMER_CTRL], R0             ; restart: COUNT = QUANTUM
         RET
 
 ; ---- keyboard -------------------------------------------------------

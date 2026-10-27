@@ -36,25 +36,14 @@ schedule:
         JMP idle
 
 .found: ST [current], R0
-        ; The timer is a fixed periodic tick (it is never reloaded here, so
-        ; timekeeping and sleepers stay accurate even when processes yield
-        ; often). If it expired while the kernel itself was running, service
-        ; that tick now; otherwise the interrupt would be taken immediately
-        ; after RTI and, if kernel work ever exceeded a quantum, no process
-        ; could make progress (interrupt livelock).
-        LD R1, [PIC_PENDING]
-        AND R1, #IRQ_TIMER
-        JEQ .nopend
+        ; Give the chosen process a full quantum: timer_restart stops the
+        ; timer, accounts for the time already elapsed (so ticks and sleepers
+        ; stay exact however often processes yield) and restarts it. Without a
+        ; restart, a tick that expired while the kernel ran would be taken
+        ; right after RTI (interrupt livelock when kernel work nears a quantum).
         PUSH R0
-        CALL timer_service              ; acknowledges, counts the tick, wakes sleepers
+        CALL timer_restart
         POP R0
-.nopend:
-        LD R1, [TIMER_CTRL]             ; tickless idle may have stopped the timer:
-        AND R1, #TIMER_EN
-        JNE .ticking
-        MOV R1, #TIMER_EN | TIMER_IE | TIMER_PERIODIC
-        ST [TIMER_CTRL], R1             ; restart it (EN 0 -> 1 reloads COUNT)
-.ticking:
         MOV R1, #ST_RUNNING
         ST [P3+PCB_STATE], R1
         LDW P0, [P3+PCB_RUNS]
@@ -79,7 +68,12 @@ idle:
         CALL any_sleeping
         CMP R0, #0
         JNE .wait                       ; sleepers need timer ticks
+        MOV R0, #TIMER_IE | TIMER_PERIODIC
         ST [TIMER_CTRL], R0             ; tickless idle: stop the timer (dispatch restarts it)
+        LD R0, [TIMER_STATUS]
+        AND R0, #TIMER_EXPIRED
+        JEQ .wait
+        CALL timer_service              ; count (and clear) an expiry that is already pending
 .wait:  HLT                             ; sleep until an enabled IRQ line is pending
         LDW P0, [idle_wakeups]
         INCP P0

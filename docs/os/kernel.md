@@ -1,7 +1,7 @@
 # Workshop Kernel architecture
 
 The Workshop Kernel is a small, complete educational kernel written in VC-8
-assembly (`src/guest/kernel/`, about 2.9 KiB of machine code). It is loaded by
+assembly (`src/guest/kernel/`, about 3 KiB of machine code). It is loaded by
 the boot ROM and provides protected processes, system calls, interrupt-driven
 devices and timer-driven preemptive round-robin scheduling. All of it executes
 on the virtual CPU; see the [boundary table](../spec/architecture.md#9-hardwaresoftware-boundary).
@@ -87,15 +87,15 @@ frame pointer, load someone else's":
 1. An interrupt or system call saves the full context into a frame on the
    current process's kernel stack and records `SP` in its PCB.
 2. `schedule` scans the PCBs round robin, starting after `current`, for a READY
-   process and marks it RUNNING. The timer is a fixed periodic tick
-   (`QUANTUM = 2000` cycles) that is never reloaded here, so timekeeping and
-   sleeping processes stay accurate however often processes enter the kernel. If
-   the tick expired while the kernel itself was running, `schedule` services it
-   at once (`timer_service`), so it is not taken immediately after `RTI` —
-   otherwise kernel overhead larger than a quantum could stop every process from
-   making progress (interrupt livelock). A process dispatched mid-period gets
-   the rest of that period. If tickless idle stopped the timer, `schedule`
-   restarts it. Then it jumps to
+   process and marks it RUNNING, then calls `timer_restart`, which gives the
+   process a full quantum (`QUANTUM = 2000` cycles) without losing time: it
+   stops the timer, counts a tick that expired while the kernel itself was
+   running, adds the elapsed part of the interrupted period to `tick_acc`
+   (counting a tick whenever that reaches a quantum) and restarts the timer.
+   Restarting prevents _interrupt livelock_ (a tick taken immediately after
+   `RTI` whenever kernel work approaches a quantum); the accounting keeps
+   `ticks` and sleeping processes accurate however often processes yield. Then
+   it jumps to
    `resume_current`.
 3. `resume_current` loads `SP` from the PCB, loads `UBASE`/`ULIMIT`, pops `USP`
    and `R7…R0`, and executes `RTI`, which restores `PSW` and `PC`.

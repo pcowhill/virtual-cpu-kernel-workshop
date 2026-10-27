@@ -204,7 +204,13 @@ export function buildSystem(files: Record<string, string>, config: SystemConfig)
   hdr[10] = placed.length;
   placed.forEach((p, i) => {
     const e = hdr.subarray(16 + i * 16, 32 + i * 16);
-    const name = new TextEncoder().encode(p.spec.name).slice(0, 8); // at most 8 bytes
+    // At most 8 bytes, never splitting a UTF-8 character.
+    let nameText = '';
+    for (const ch of p.spec.name) {
+      if (new TextEncoder().encode(nameText + ch).length > 8) break;
+      nameText += ch;
+    }
+    const name = new TextEncoder().encode(nameText);
     e.set(name, 0);
     e[8] = p.image!.block;
     e[9] = p.image!.count;

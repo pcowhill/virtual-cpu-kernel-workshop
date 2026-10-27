@@ -101,6 +101,20 @@ describe('authentic boot sequence', () => {
     expect(m.gpio.leds).toBe(0);
   });
 
+  it('firmware accepts a kernel that ends exactly at the last block (255)', () => {
+    const b = build([prog('hello')]);
+    const k = b.kernelImage!;
+    const disk = b.disk.slice();
+    const first = 256 - k.count;
+    disk.set(b.disk.subarray(k.block * 256, (k.block + k.count) * 256), first * 256);
+    disk[3] = first;
+    const m = new Machine();
+    m.powerOn({ rom: b.rom, disk });
+    m.run(3_000_000);
+    expect(m.terminal.text()).toContain('checksum OK');
+    expect(m.terminal.text()).toContain('VC-8 Workshop Kernel');
+  });
+
   it('firmware detects a kernel area that holds no kernel (checksum over the blocks it read)', () => {
     const b = build([prog('hello')]);
     const disk = b.disk.slice();

@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { CAUSE, MEM, VECTOR } from '../../src/core/isa/constants';
 import { Machine } from '../../src/core/machine/machine';
 import { kernelLayout, readProcessTable, SchedulingTimeline } from '../../src/core/os/awareness';
+import { GUEST_SOURCES } from '../../src/guest';
 import { boot, prog, runToHalt } from './os-helpers';
 
 /** Raw terminal output (the screen wraps long lines at 80 columns; the transcript does not). */
@@ -111,6 +112,34 @@ describe('system calls', () => {
     expect(out(m)).toContain("'blinker' exited with code 0");
     expect(out(m)).toContain("'yielder' exited with code 0");
     expect(m.bus.peekWord(b.kernelSymbols['ticks']!)).toBeGreaterThanOrEqual(32);
+  });
+
+  it.each([1200, 600, 400, 300])(
+    'no interrupt livelock with a quantum of %i cycles (close to the kernel path)',
+    (q) => {
+      const kernel = GUEST_SOURCES['kernel/main.asm']!.replace(/QUANTUM\s*=\s*2000/, `QUANTUM = ${q}`);
+      const { m } = boot([prog('spinner'), prog('spinner')], { 'kernel/main.asm': kernel });
+      const res = runToHalt(m, 6_000_000);
+      expect(res.reason).toBe('halted');
+      expect(out(m)).toContain("pid 1 'spinner' exited with code 0");
+      expect(out(m)).toContain("pid 2 'spinner' exited with code 0");
+    },
+  );
+
+  it('a process woken from tickless idle runs before it can be preempted', () => {
+    const { m } = boot([prog('echo')]);
+    m.run(1_000_000); // echo blocked, kernel idle with the timer stopped
+    expect(m.timer.ctrl & 1).toBe(0);
+    expect(m.timer.expired).toBe(false);
+    const before = m.events.toArray().length;
+    m.injectKey('a'.charCodeAt(0));
+    m.run(100_000);
+    const after = m.events.toArray().slice(before);
+    const firstRti = after.findIndex((e) => e.type === 'rti' && e.toUser);
+    expect(firstRti).toBeGreaterThanOrEqual(0);
+    // The first thing after returning to user mode is the program's own system call, not a timer interrupt.
+    const next = after.slice(firstRti + 1).find((e) => e.type === 'exception');
+    expect(next?.vector).toBe(4);
   });
 
   it('puts writes at most 255 characters and returns the count', () => {

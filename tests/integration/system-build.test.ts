@@ -84,7 +84,8 @@ describe('system build and disk layout', () => {
 
   it('truncates long multi-byte names to 8 bytes instead of failing', () => {
     const b = build([{ name: 'héllo-wörld', path: 'programs/hello.asm' }]);
-    expect(new TextDecoder().decode(b.disk.subarray(16, 24).filter((x) => x !== 0))).toContain('h');
+    const stored = b.disk.subarray(16, 24);
+    expect(new TextDecoder('utf-8', { fatal: true }).decode(stored.filter((x) => x !== 0))).toBe('héllo-w');
   });
 
   it('reports an empty program and overlapping data files', () => {

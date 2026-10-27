@@ -39,6 +39,7 @@ kbd_tail        = KDATA + 0x08
 kbd_count       = KDATA + 0x09
 idle_wakeups    = KDATA + 0x0A  ; word
 switches        = KDATA + 0x0C  ; word: number of dispatches
+tick_acc        = KDATA + 0x0E  ; word: elapsed cycles of interrupted timer periods
 kbd_buf         = KDATA + 0x20  ; KBD_BUF_SIZE bytes
 KBD_BUF_SIZE    = 16
 proc_table      = KDATA + 0x40  ; MAX_PROCS process control blocks

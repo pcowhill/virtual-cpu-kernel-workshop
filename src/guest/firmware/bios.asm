@@ -113,8 +113,11 @@ fw_reset:
         CMP R0, #0
         JEQ fw_bad_layout               ; block 0 is the boot block itself
         LD R1, [fw_kcount]
-        ADD R0, R1
-        JCS fw_bad_layout               ; first block + count runs off the disk
+        ADD R0, R1                      ; first block + count must be <= 256
+        JCC .inside
+        CMP R0, #0                      ; exactly 256 (ends at block 255) is fine
+        JNE fw_bad_layout
+.inside:
         LD R0, [fw_kload]
         CMP R0, #0
         JNE fw_bad_layout               ; load address must be 256-byte aligned

@@ -13,9 +13,9 @@ Cycle numbers below come from the default build at the time of writing.
 
 - The kernel programmed the timer at boot: `RELOAD = 2000`, `EN | IE | PERIODIC`,
   and unmasked IRQ line 0 in the interrupt controller.
-- The timer ticks every 2000 cycles regardless of what the kernel does;
-  `schedule` services a tick that expired while the kernel was running so it is
-  not taken immediately after `RTI`.
+- Every dispatch calls `timer_restart`, which accounts for the time already
+  used, then restarts the timer: each dispatched process gets a full
+  2000-cycle quantum.
 - Process 1 (`spinner`, window `0x6000–0x7FFF`) and process 2 (`spinner`,
   window `0x8000–0x9FFF`) are both READY.
 
@@ -41,7 +41,8 @@ CMPP P2, #LIMIT / JNE .loop` in user mode. `PSW = 0x40`: interrupts enabled.
    `TIMER_STATUS ← 1` (acknowledge: the IRQ line drops), increments `ticks` and
    checks sleepers. Process 1 is charged one tick and moved RUNNING → READY.
 6. **Scheduling decision.** `schedule` scans round robin after `current = 0`,
-   finds process 2 READY, sets `current = 1` and marks it RUNNING.
+   finds process 2 READY, sets `current = 1`, marks it RUNNING and calls
+   `timer_restart` (account for elapsed time, restart for a full quantum).
 7. **Restore the other context.** `resume_current` loads `SP` from process 2's
    PCB — a different kernel stack holding process 2's frame from its last
    preemption — sets `UBASE = 0x8000`, `ULIMIT = 0xA000`, restores `USP` and
@@ -50,9 +51,9 @@ CMPP P2, #LIMIT / JNE .loop` in user mode. `PSW = 0x40`: interrupts enabled.
    protection unit now only allows `0x8000–0x9FFF`. Process 2 continues exactly
    where it was interrupted, with all its registers intact.
 
-In the default build the kernel part (steps 3–8) takes about 1 000–1 400 cycles,
-and the next process then runs for the rest of the 2000-cycle timer period (typically
-600–1 000 cycles; occasionally only a few cycles when the period was nearly over).
+In the build used here the kernel part (steps 3–8) takes about 1 350–1 750 cycles,
+and the next process then runs for a full quantum (up to about 1 750 cycles of
+user code before the next tick, after the restart and the return path).
 
 ## What to observe in the workbench (milestone 3)
 
@@ -70,7 +71,7 @@ and the next process then runs for the rest of the 2000-cycle timer period (typi
 
 - Change `QUANTUM` in `kernel/main.asm`, rebuild and reboot: smaller quanta mean
   more switches and a larger share of kernel time.
-- Remove the "service a pending tick" block in `schedule` and set `QUANTUM`
+- Remove the `CALL timer_restart` in `schedule` and set `QUANTUM`
   below the handler's cost: the timer fires again before the process executes a
   single instruction — _interrupt livelock_, which this kernel was written to
   avoid.
