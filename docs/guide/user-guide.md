@@ -78,7 +78,7 @@ controls (step, run, set a watchpoint, edit and rebuild), so you can see exactly
 lesson and keeps the machine as it is for free experimentation. Progress is remembered in this browser.
 
 Starting a lesson resets breakpoints, watchpoints and the break-on settings to their defaults, because the lessons
-are written for them. If you edited a file a lesson relies on (its program, the include files and library, and
+are written for them; **Leave** restores yours. If you edited a file a lesson relies on (its program, the include files and library, and
 for operating-system lessons the firmware and kernel), the lesson page offers to restore the originals.
 
 ## Workspaces

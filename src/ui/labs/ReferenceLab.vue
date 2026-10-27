@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { INSTRUCTIONS, type InstructionDef } from '../../core/isa/opcodes';
 import { syntaxSummary } from '../../core/asm/assembler';
 import { addressingMode, cycleCount, encodingLayout, microOpNames } from '../../core/isa/reference';
@@ -61,15 +61,16 @@ function onDocClick(e: MouseEvent): void {
     document.getElementById(href.slice(1))?.scrollIntoView();
     return;
   }
-  const file = href.split('#')[0]!.split('/').pop()!;
-  const target = DOC_FILES[file];
+  const [path, anchor] = href.split('#');
+  const target = DOC_FILES[path!.split('/').pop()!];
   if (target) {
     tab.value = target;
+    if (anchor) void nextTick(() => document.getElementById(anchor)?.scrollIntoView());
     return;
   }
   // Documents not bundled in the app (developer docs) are read on GitHub.
-  const path = href.replace(/^(\.\.?\/)+/, '').replace(/^docs\//, '');
-  window.open(REPO_DOCS + path, '_blank', 'noopener');
+  const repoPath = href.replace(/^(\.\.?\/)+/, '').replace(/^docs\//, '');
+  window.open(REPO_DOCS + repoPath, '_blank', 'noopener');
 }
 
 const html = computed(() => (DOCS[tab.value] ? renderMarkdown(DOCS[tab.value]!) : ''));

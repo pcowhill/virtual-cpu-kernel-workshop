@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { nextTick, onBeforeUnmount, onDeactivated, onMounted, ref } from 'vue';
 import { useStore } from '../../app/store';
 import { useWorkspaces } from '../../app/workspaces';
 import { ImportError, type SnapshotRecord } from '../../app/workspace-format';
@@ -24,6 +24,11 @@ onMounted(() => {
   document.addEventListener('keydown', onDialogKey);
 });
 onBeforeUnmount(() => document.removeEventListener('keydown', onDialogKey));
+// The lab is kept alive while hidden: an open dialog must not keep capturing keys.
+onDeactivated(() => {
+  confirming.value = null;
+  returnFocus = null;
+});
 
 /** Ask for confirmation in a modal dialog; Cancel has the initial focus. */
 function ask(title: string, detail: string, action: () => Promise<unknown> | unknown): void {

@@ -66,7 +66,7 @@ does. Nothing below is approximated or animated by the workbench.
 - **Lessons expect the shipped sources and default debugger settings.** If you edited a file a lesson uses (its
   program, the include files and library, and for OS lessons the firmware and kernel), its checks may become
   unreachable; the lesson page lists the edited files and offers to restore them. Starting a lesson resets
-  breakpoints, watchpoints and break-on settings.
+  breakpoints, watchpoints and break-on settings (Leave restores them).
 - **Workspaces live in one browser.** Clearing site data deletes them, and browser storage quotas apply. Export
   anything you want to keep.
 - **Only Chromium is tested automatically.** The app uses standard APIs (module Web Workers, IndexedDB, service

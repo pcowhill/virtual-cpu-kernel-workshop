@@ -118,5 +118,10 @@ describe('guided lessons', () => {
     expect(s.debug.breakOn.interrupts).toBe(false);
     L.restoreFiles(lesson);
     expect(L.modifiedFiles(lesson)).toEqual([]);
+    // Leaving gives the user's own debugger settings back.
+    L.exit();
+    expect(s.debug.watchpoints).toEqual([[0x2000, 'w']]);
+    expect(s.debug.breakpoints).toEqual([0x0100]);
+    expect(s.debug.breakOn.interrupts).toBe(true);
   });
 });

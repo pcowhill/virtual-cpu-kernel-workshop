@@ -4,7 +4,7 @@
  * counts as done once its check has held while the step was current.
  */
 import { computed, effectScope, reactive, ref, watch, type EffectScope } from 'vue';
-import { defaultDebugSettings, useStore } from './store';
+import { defaultDebugSettings, useStore, type DebugSettings } from './store';
 import { GUEST_SOURCES } from '../guest';
 import { LESSONS } from '../lessons/lessons';
 import {
@@ -65,6 +65,8 @@ function createLessons() {
   const passed = reactive<boolean[]>([]);
   const completed = ref<string[]>(loadProgress());
   const busy = ref(false);
+  /** The user's debugger stops before the first lesson reset them (restored on Leave). */
+  let savedDebug: Pick<DebugSettings, 'breakpoints' | 'watchpoints' | 'breakOn'> | null = null;
   const error = ref<string | null>(null);
 
   const active = computed(() => LESSONS.find((l) => l.id === activeId.value) ?? null);
@@ -122,6 +124,13 @@ function createLessons() {
         s.debug.breakpoints.length > 0 ||
         s.debug.watchpoints.length > 0 ||
         JSON.stringify(s.debug.breakOn) !== JSON.stringify(d.breakOn);
+      // Kept so that leaving the lessons gives the user's own settings back.
+      if (changed && !savedDebug)
+        savedDebug = {
+          breakpoints: [...s.debug.breakpoints],
+          watchpoints: s.debug.watchpoints.map(([a, k]) => [a, k] as [number, typeof k]),
+          breakOn: { ...s.debug.breakOn },
+        };
       s.debug.breakpoints.splice(0);
       s.debug.watchpoints.splice(0);
       Object.assign(s.debug.breakOn, d.breakOn);
@@ -201,6 +210,13 @@ function createLessons() {
   function exit(): void {
     activeId.value = null;
     error.value = null;
+    if (savedDebug) {
+      s.debug.breakpoints.splice(0, s.debug.breakpoints.length, ...savedDebug.breakpoints);
+      s.debug.watchpoints.splice(0, s.debug.watchpoints.length, ...savedDebug.watchpoints);
+      Object.assign(s.debug.breakOn, savedDebug.breakOn);
+      savedDebug = null;
+      s.notify('info', 'Left the lesson. Your breakpoints, watchpoints and break-on settings were restored.');
+    }
   }
 
   function resetProgress(): void {
